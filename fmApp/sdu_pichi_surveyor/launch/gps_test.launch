@@ -1,11 +1,11 @@
 <launch>
-	<node name="rviz" pkg="rviz" type="rviz" respawn="false" output="screen" args=""/>
-	<!--node name="gps_test" pkg="sdu_pichi_surveyor" type="gps_test.py" output="screen" args="$(find sdu_pichi_surveyor)/data/deviations.txt"/-->
+	<node name="rviz" pkg="rviz" type="rviz"/>
+	<node name="gps_test" pkg="sdu_pichi_surveyor" type="gps_test.py" output="screen" args="$(find sdu_pichi_surveyor)/data/deviations.txt"/>
 	<!--node name="rosbag_player" pkg="rosbag" type="play" args="$(find sdu_pichi_surveyor)/bags/input_only.bag" respawn="true"/-->
+	<!--node name="rosbag_recorder" pkg="rosbag" type="record" args="-a -F $(find sdu_pichi_surveyor)/bags/" /-->
 	
-	<node pkg="tf" type="static_transform_publisher" name="bottom_broadcaster" args="-1.23 0 0 0 0 0 imu_link mast_bottom 100"/>
-	<node pkg="tf" type="static_transform_publisher" name="map_broadcaster" args="-588599.0922487933 -6137322.245287642 0 0 0 0 mast_top odom_combined 100"/>
-	
+	<node pkg="tf" type="static_transform_publisher" name="map_broadcaster" args="-588599.0922487933 -6137322.245287642 0 0 0 0 gps_frame map 100"/>
+	<node pkg="tf" type="static_transform_publisher" name="mast_broadcaster" args="-1.20 0 0 0 0 0 mast_top mast_bottom 100"/>
 
 	<!-- IMU -->
 	<node pkg="vectornav_vn100" name="imu_node"  type="vectornav_vn100_node" output="screen" respawn="True" >
@@ -27,21 +27,13 @@
 	</node> 
 	
 	<!-- GPS -->
-	<!--node pkg="serial_string" name="gps_serial" type="serial_string_node" output="screen" >
+	<node pkg="serial_string" name="gps_serial" type="serial_string_node" output="screen" >
 		<param name="publisher_topic" value="/fmData/gps_rx" />	 
 		<param name="subscriber_topic" value="/fmData/gps_tx" />
 		<param name="device" value="/dev/imu" />	
 		<param name="baudrate" value="115200" />
 		<param name="termination_character" value="10"/>
-	</node-->
-	
-    <!--node pkg="serial_nmea" name="nmea_receiver" type="nmea_node" output="screen">
-		<param name="str_to_msg_sub" value="/fmData/gps_rx" />   
-		<param name="str_to_msg_pub" value="/fmData/nmea_from_gps" />
-		<param name="msg_to_str_sub" value="/fmData/nmea_to_gps" />   
-		<param name="msg_to_str_pub" value="/fmData/gps_tx" />           
-		<param name="use_nmea_checksum" type="boolean" value="true" />
-    </node-->	
+	</node>
     
     <node pkg="gps_gpgga" name="nmea_to_gpgga" type="gps_gpgga_node" output="screen">
         <param name="subscribe_topic_id" value="/fmData/gps_rx" />
@@ -58,8 +50,8 @@
 		<param name="publish_topic_id" value="/fmKnowledge/gps_odom" />
 		<param name="odom_frame_id" value="gps_frame" />
 		
-		<param name="vehicle_frame" value="map" />
-		<param name="odom_estimate_frame" value="odom_combined" />
+		<param name="vehicle_frame" value="gps_frame" />
+		<param name="odom_estimate_frame" value="world_frame" />
 		
 		<param name="child_odom_frame_id" value="world_frame" />
 		<param name="receive_n_before_publish" value="10"/>
