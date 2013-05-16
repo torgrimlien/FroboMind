@@ -1,0 +1,12 @@
+<launch>
+	<node pkg="ntnu_fieldflux" type="potentialFieldController" name="potentialFieldcontroller">
+		<param name="subscribe_topic" type="string" value="fmProcessors/odom_estimate"/>
+		<param name="publish_topic" type="string" value="fmController/output"/>
+		<param name="k1" type="double" value="1"/>
+		<param name="k2" type="double" value="5"/>
+		<param name="beta" type="double" value="0.4"/>
+		<param name="lambda" type="double" value="3"/>
+		<param name="v_max" type="double" value="1.0"/>
+	</node>
+
+</launch>

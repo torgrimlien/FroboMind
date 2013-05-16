@@ -1,0 +1,76 @@
+<launch>
+	<node pkg="tf" type="static_transform_publisher" name="base_link_broadcaster" args="0 0 0 0 0 0 base_footprint base_link 100"/>
+<!-- imu -->
+  <node pkg="microstrain_3dmgx2_imu" type="imu_node" name="microstrain_3dmgx2_node" output="screen">
+    <param name="time_offset" value="-0.040" />
+    <param name="port"  type="string" value="/dev/ttyACM0" />
+    <param name="autostart" type="bool" value="true" />
+    <param name="frameid"  type="string" value="imu" />
+    <param name="autocalibrate" type="bool" value="true" />
+    <param name="angular_velocity_stdev" type="double" value="0.00017" />
+  </node>
+  
+  <node pkg="ntnu_fieldflux" type="CANMsgHandler" name="CAN" output="screen" />
+  <node pkg="joy" type="joy_node" name="joy_input">
+	<param name="dev" type="string" value="/dev/input/js0"/>
+	<param name="deadzone" value="0.10"/>
+  </node>
+<!-- read data from gps via gpsd and convert to odometry msgs -->
+<!--  <node pkg="gpsd_client" type="gpsd_client" name="gpsd_client"/>
+  <node pkg="gps_common" type="utm_odometry_node" name="utm_odometry">
+	<param name="frame_id" type="string" value="gpsc_frame"
+	<param name="child_frame_id" type="string" value="gpsc_child_frame"
+	
+  </node>
+		    <node pkg="serial_nmea" name="nmea_node" type="nmea_node" output="screen"/>
+--> 
+  <node pkg="encoder_utm_ekf" type="encoder_utm_ekf_node" name="encoder_utm_ekf" output="screen">
+	<param name="imu_subscriber_topic" type="string" value="/imu/data"/>
+	<param name="odom_subscriber_topic" type="string" value="/fmKnowledge/odom"/>
+	<param name="gps_odom_subscriber_topic" type="string" value="/fmInformation/gps_odom"/>
+
+
+	<param name="imu_covariance" type="double" value="0.01"/>
+	<param name="odom_covariance" type="double" value="0.05"/>
+	<param name="ks" type="double" value="0.1"/>
+	<param name="ktheta" type="double" value="10"/>
+	<param name="magnetic_north_correction" type="double" value="0.038"/>
+	<param name="angle_update_distance_threshold" type="double" value="0.2"/>
+  </node>
+  <node pkg="serial_string" name="serial_string_node" type="serial_string_node" output="screen" respawn="true">
+	<param name="publisher_topic" value="/fmData/rx" />	 
+	<param name="subscriber_topic" value="/fmData/tx" />	
+	<param name="device" value="/dev/ttyUSB0" />	
+	<param name="baudrate" value="115200" />
+	<param name="termination_character" value="10"/>
+  </node>
+
+  <node pkg="gps_gpgga" name="gps_gpgga_node" type="gps_gpgga_node" output="screen" respawn="true">
+       	<param name="publish_topic_id" type="string" value="/fmSensors/gpgga_msg" />	 
+       	<param name="subscribe_topic_id" type="string" value="/fmData/rx" />	
+  </node>
+  <node pkg="gpgga_to_utm" name="gpgga_to_utm_node" type="gpgga_to_utm_node">
+	<param name="subscribe_topic_id" type="string" value="/fmSensors/gpgga_msg" />
+	<param name="publish_topic_id" type ="string" value="/fmInformation/gpgga_utm_msg"/>
+  </node>
+  <node pkg="utm_to_odom" name="utm_to_odom_node" type="utm_to_odom_node">
+	<param name="subscribe_topic_id" type="string" value="/fmInformation/gpgga_utm_msg" />
+	<param name="publish_topic_id" type ="string" value="/fmInformation/gps_odom"/>
+  </node>
+	    
+	   			
+  <node pkg="differential_odometry" type="differential_odometry_node" name="differential_odometry">
+	<param name="enc_left_sub" value="/fmInformation/encoder_left" />
+	<param name="enc_right_sub" value="/fmInformation/encoder_right" />
+	<param name="imu_sub" value="/imu/data" />
+	<param name="odom_pub" value="/fmKnowledge/odom" />
+	<param name="yaw_angle_source" value="XXimu_angular_velocity"></param>  
+	<param name="imu_angular_velocity_yaw_axis" value="-z"></param> 
+	<param name="vehicle_frame" value="base_footprint"></param>      
+	<param name="odom_estimate_frame" value="/odom_combined"></param>
+	<param name="/diff_steer_wheel_radius" value="0.29124"/>
+	<param name="/diff_steer_wheel_ticks_per_rev" value="83333"/>
+	<param name="/diff_steer_wheel_distance" value="1.88"/>      
+  </node>
+</launch>
+

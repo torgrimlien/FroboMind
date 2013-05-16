@@ -1,0 +1,15 @@
+<launch>  
+  <node pkg="encoder_utm_ekf" type="encoder_utm_ekf_node" name="encoder_utm_ekf">
+	<param name="imu_subscriber_topic" type="string" value="/imu/data"/>
+	<param name="odom_subscriber_topic" type="string" value="/fmKnowledge/odom"/>
+	<param name="gps_odom_subscriber_topic" type="string" value="/fmInformation/gps_odom"/>
+
+
+	<param name="imu_covariance" type="double" value="0.01"/>
+	<param name="odom_covariance" type="double" value="0.05"/>
+	<param name="ks" type="double" value="0.1"/>
+	<param name="ktheta" type="double" value="10"/>
+	<param name="magnetic_north_correction" type="double" value="0.038"/>
+	<param name="angle_update_distance_threshold" type="double" value="0.2"/>
+  </node>
+</launch>

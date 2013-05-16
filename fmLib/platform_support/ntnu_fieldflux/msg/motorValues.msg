@@ -1,0 +1,17 @@
+uint64 leftMotor_Id_ref
+uint64 leftMotor_Iq_ref
+uint64 leftMotor_Id
+uint64 leftMotor_Iq
+uint64 leftMotor_state
+int32 leftMotor_w
+uint64 leftMotor_dir
+int32 leftMotor_w_ref
+uint64 rightMotor_Id_ref
+uint64 rightMotor_Iq_ref
+uint64 rightMotor_Id
+uint64 rightMotor_Iq
+uint64 rightMotor_state
+int32 rightMotor_w
+uint64 rightMotor_dir
+int32 rightMotor_w_ref
+
