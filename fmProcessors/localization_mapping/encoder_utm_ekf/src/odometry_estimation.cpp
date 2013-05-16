@@ -38,12 +38,17 @@ public:
 
 	void processIMU(const sensor_msgs::Imu::ConstPtr& imu_msg)
 	{
-		double heading = tf::getYaw(imu_msg->orientation);
+		double qx = imu_msg->orientation.x;
+		double qy = imu_msg->orientation.y;
+		double qz = imu_msg->orientation.z;
+		double qw = imu_msg->orientation.w;		
+		double heading = atan2(2*(qx*qy + qw*qz), qw*qw + qx*qx - qy*qy - qz*qz);
+		//double heading = tf::getYaw(imu_msg->orientation);
 
-		heading = -(heading- M_PI/2);
+		//heading = -(heading- M_PI/2);
 
 		heading += north_correct;
-
+		//printf("heading IMU: %f \n\n\n\n",heading);
 		correct_angle(heading);
 
 		if(is_imu_initialised)
@@ -120,7 +125,8 @@ public:
 			heading_estimator.get_result(vehicle_heading,vehicle_heading_cov);
 			// get current heading from gps
 			yaw_gps = tf::getYaw(odom_msg->pose.pose.orientation);
-
+			
+			
 			if(first==false && odom_msg->pose.covariance[35] < 9000)
 			{
 				first = true;
@@ -382,16 +388,16 @@ int main(int argc, char **argv)
 
 	nh.param<std::string>("vehicle_frame",node.base_frame,"base_footprint");
 	nh.param<std::string>("gps_frame",node.gps_frame,"gps_link");
-	nh.param<std::string>("odom_estimate_frame",node.odom_frame,"odom_combined");
+	nh.param<std::string>("odom_estimate_frame",node.odom_frame,"/odom_estimated");
 
 	nh.param<double>("gps_covariance",node.gps_cov,10);
 	nh.param<double>("imu_covariance",node.imu_cov,0.01);
 	nh.param<double>("odom_covariance",node.odom_cov,0.05);
 	nh.param<double>("ks",node.ks,0.1); // how much to factor in positional movement into the gps angle covariance
 	nh.param<double>("ktheta",node.ktheta,10); // how much to factor in gps heading change into the gps angle covariance
-	nh.param<double>("magnetic_north_correction",node.north_correct,0.30); // offset between IMU magnetic north and gps north.
+	nh.param<double>("magnetic_north_correction",node.north_correct,0.03); // offset between IMU magnetic north and gps north.
 	nh.param<double>("angle_update_distance_threshold",node.distance_threshold,0.2);
-
+	printf("north correct: %f", node.north_correct);
 	imu_sub = nh.subscribe<sensor_msgs::Imu>(imu_sub_top.c_str(),10,&OdometryKalmanNode::processIMU,&node);
 	odom_sub = nh.subscribe<nav_msgs::Odometry>(odom_sub_top.c_str(),10,&OdometryKalmanNode::processOdomControl,&node);
 	gps_sub = nh.subscribe<nav_msgs::Odometry>(gps_odom_sub_top.c_str(),10,&OdometryKalmanNode::processOdomUpdate,&node);

@@ -91,6 +91,7 @@ public:
 
 		encoder_timeout = false;
 		imu_timeout = false;
+		x_traveled=0;
 	
 		time_launch = l_time_prev = r_time_prev = imu_time_prev = ros::Time::now();
 		l_updated = r_updated = l_ready = r_ready = false;
@@ -149,6 +150,10 @@ public:
 					double qz = msg->orientation.z;
 					double qw = msg->orientation.w;
 					imu_yaw = atan2(2*(qx*qy + qw*qz), qw*qw + qx*qx - qy*qy - qz*qz);
+					//double imu_yaw = tf::getYaw(msg->orientation);
+
+					//imu_yaw = -(imu_yaw- M_PI/2);					
+					//printf("Diff_odom_IMU_yaw:    %f\n\n\n\n",imu_yaw);
 				}			
 				break;
 
@@ -179,6 +184,7 @@ public:
 							break;
 					}
 					imu_yaw = angle_limit (imu_yaw);
+
 				}
 				break;
 		}
@@ -218,6 +224,8 @@ public:
 
 			double dx = (delta_l + delta_r)/2; // approx. distance (assuming linear motion during dt)
 			double dtheta;
+			x_traveled+=dx;
+			printf("x_traveled x: %f \n", x_traveled);
 
 			// calculate change in orientation using odometry
 			if (yaw_source == YAW_SOURCE_ODOMETRY)
@@ -260,6 +268,8 @@ public:
 			odom.pose.pose.orientation = odom_quat;
 			double dt = (l_time_latest - l_time_prev).toSec(); // assuming that left and right have the same interval
 			odom.twist.twist.linear.x  = dx/dt; 
+			printf("dt=%f\n",dt);
+			printf("dx/dt diff_odom=%f\n\n\n\n",odom.twist.twist.linear.x);
 			odom.twist.twist.angular.z = dtheta/dt;
 			odom_pub.publish(odom);
 		}
@@ -288,7 +298,7 @@ private:
 	bool l_updated, r_updated;
 	ros::Time time_launch, l_time_latest, l_time_prev, r_time_latest, r_time_prev, imu_time_latest, imu_time_prev;
 	bool l_ready, r_ready;
-	double x, y, theta;
+	double x, y, theta,x_traveled;
 	msgs::encoder prev_l, prev_r;
 	nav_msgs::Odometry odom;
 	geometry_msgs::TransformStamped odom_trans;
@@ -316,13 +326,15 @@ int main(int argc, char** argv) {
 	// subscribers
 	nh.param<string>("enc_left_sub", subscribe_enc_l, "/fmInformation/encoder_left");
 	nh.param<string>("enc_right_sub", subscribe_enc_r, "/fmInformation/encoder_right");
-	nh.param<string>("imu_sub", subscribe_imu, "/fmInformation/imu");
+	nh.param<string>("imu_sub", subscribe_imu, "imu/data");
 
 	// robot parameters
-	nh.param<double>("/diff_steer_wheel_radius", wheel_radius, 0.25);
-	nh.param<double>("/diff_steer_wheel_ticks_per_rev", wheel_ticks_rev, 360);
-	nh.param<double>("/diff_steer_wheel_distance", wheel_dist, 1.0);
+	nh.param<double>("diff_steer_wheel_radius", wheel_radius, 0.29124);
+	nh.param<double>("diff_steer_wheel_ticks_per_rev", wheel_ticks_rev, 83333);
+	nh.param<double>("diff_steer_wheel_distance", wheel_dist, 1.88);
 	tick_to_meter = 2*M_PI*wheel_radius/wheel_ticks_rev;
+	printf("tick_to_meter %f \n",tick_to_meter);
+	printf("ticks/rev: %f \n",wheel_ticks_rev);
 
 	// other parameters
 	std::string yaw_source_str;
