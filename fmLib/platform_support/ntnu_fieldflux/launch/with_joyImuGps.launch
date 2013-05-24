@@ -1,5 +1,5 @@
 <launch>
-	<node pkg="tf" type="static_transform_publisher" name="base_link_broadcaster" args="0 0 0 0 0 0 base_footprint base_link 100"/>
+<!--	<node pkg="tf" type="static_transform_publisher" name="base_link_broadcaster" args="0 0 0 0 0 0 base_footprint base_link 100"/> -->
 <!-- imu -->
   <node pkg="microstrain_3dmgx2_imu" type="imu_node" name="microstrain_3dmgx2_node" output="screen">
     <param name="time_offset" value="-0.040" />
@@ -30,8 +30,8 @@
 	<param name="gps_odom_subscriber_topic" type="string" value="/fmInformation/gps_odom"/>
 
 
-	<param name="imu_covariance" type="double" value="0.01"/>
-	<param name="odom_covariance" type="double" value="0.05"/>
+	<param name="imu_covariance" type="double" value="0.0001"/>
+	<param name="odom_covariance" type="double" value="1"/>
 	<param name="ks" type="double" value="0.1"/>
 	<param name="ktheta" type="double" value="10"/>
 	<param name="magnetic_north_correction" type="double" value="0.038"/>
@@ -56,10 +56,12 @@
   <node pkg="utm_to_odom" name="utm_to_odom_node" type="utm_to_odom_node">
 	<param name="subscribe_topic_id" type="string" value="/fmInformation/gpgga_utm_msg" />
 	<param name="publish_topic_id" type ="string" value="/fmInformation/gps_odom"/>
+	<param name="gps_heading_variance" type="double" value="0.01"/>
+	
   </node>
 	    
 	   			
-  <node pkg="differential_odometry" type="differential_odometry_node" name="differential_odometry">
+  <node pkg="differential_odometry" type="differential_odometry_node" name="differential_odometry" output="screen">
 	<param name="enc_left_sub" value="/fmInformation/encoder_left" />
 	<param name="enc_right_sub" value="/fmInformation/encoder_right" />
 	<param name="imu_sub" value="/imu/data" />
@@ -68,9 +70,11 @@
 	<param name="imu_angular_velocity_yaw_axis" value="-z"></param> 
 	<param name="vehicle_frame" value="base_footprint"></param>      
 	<param name="odom_estimate_frame" value="/odom_combined"></param>
-	<param name="/diff_steer_wheel_radius" value="0.29124"/>
-	<param name="/diff_steer_wheel_ticks_per_rev" value="83333"/>
-	<param name="/diff_steer_wheel_distance" value="1.88"/>      
+	<param name="diff_steer_wheel_radius" value="0.29124"/>
+	<param name="diff_steer_wheel_ticks_per_rev" value="833333"/>
+	<param name="diff_steer_wheel_distance" value="1.88"/>      
   </node>
+
+
 </launch>
 

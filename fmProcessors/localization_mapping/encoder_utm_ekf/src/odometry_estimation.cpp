@@ -20,7 +20,9 @@ class OdometryKalmanNode
 {
 public:
 	bool first;
-
+	double prev_gps_heading;
+	double prev_gps_x;
+	double prev_gps_y;
 
 	OdometryKalmanNode()
 	{
@@ -38,12 +40,12 @@ public:
 
 	void processIMU(const sensor_msgs::Imu::ConstPtr& imu_msg)
 	{
-		double qx = imu_msg->orientation.x;
+		/*double qx = imu_msg->orientation.x;
 		double qy = imu_msg->orientation.y;
 		double qz = imu_msg->orientation.z;
 		double qw = imu_msg->orientation.w;		
-		double heading = atan2(2*(qx*qy + qw*qz), qw*qw + qx*qx - qy*qy - qz*qz);
-		//double heading = tf::getYaw(imu_msg->orientation);
+		double heading = atan2(2*(qx*qy + qw*qz), qw*qw + qx*qx - qy*qy - qz*qz);*/
+		double heading = tf::getYaw(imu_msg->orientation);
 
 		//heading = -(heading- M_PI/2);
 
@@ -54,7 +56,7 @@ public:
 		if(is_imu_initialised)
 		{
 			ROS_DEBUG_NAMED("angle_estimator","before angle prediction: %.4f %.4f",current_heading,current_imu_cov);
-			heading_estimator.predict(heading-previous_heading,0.000001);
+			heading_estimator.predict(heading-previous_heading,0.00001);
 
 			heading_estimator.get_result(current_heading,current_imu_cov);
 			ROS_DEBUG_NAMED("angle_estimator","After angle prediction: %.4f %.4f",current_heading,current_imu_cov);
@@ -79,15 +81,16 @@ public:
 	{
 		Kalman::KVector<double,1,1> u(2);
 		Kalman::KVector<double,1,1> state(3);
-
 		if(is_odom_initialised)
 		{
 			u(1) = odom_msg->twist.twist.linear.x;
 			u(2) = current_heading;
-
+			printf("linear_speed = %f \n\n\n\n\n",u(1));
 			ROS_DEBUG_NAMED("position_estimator","Control input: %.4f %.4f",u(1),u(2));
 			state = filter->getX();
 			ROS_DEBUG_NAMED("position_estimator","State before time update: %.4f %.4f %.4f",state(1),state(2),state(3));
+
+
 
 			filter->timeUpdateStep(u);
 
@@ -101,7 +104,7 @@ public:
 		{
 			ROS_INFO_THROTTLE(1,"Waiting for GPS fix...");
 		}
-
+		prev_time=current_time;
 	}
 
 
@@ -125,16 +128,34 @@ public:
 			heading_estimator.get_result(vehicle_heading,vehicle_heading_cov);
 			// get current heading from gps
 			yaw_gps = tf::getYaw(odom_msg->pose.pose.orientation);
-			
-			
+			/*double qx = odom_msg->pose.pose.orientation.x;
+			double qy = odom_msg->pose.pose.orientation.y;
+			double qz = odom_msg->pose.pose.orientation.z;
+			double qw = odom_msg->pose.pose.orientation.w;		
+			yaw_gps = atan2(2*(qx*qy + qw*qz), qw*qw + qx*qx - qy*qy - qz*qz);*/
+			//yaw_gps=-(yaw_gps - M_PI/2);
 			if(first==false && odom_msg->pose.covariance[35] < 9000)
 			{
 				first = true;
 				heading_estimator.correct(yaw_gps,0.0001);
+				prev_gps_x=odom_msg->pose.pose.position.x;
+				prev_gps_y=odom_msg->pose.pose.position.y;
+				prev_gps_heading=yaw_gps;
+
 			}
 			else
 			{
-				cov_gps_heading = odom_msg->pose.covariance[35];
+				
+				double current_x = odom_msg->pose.pose.position.x;
+				double current_y = odom_msg->pose.pose.position.y;
+				double dtheta;
+				double ds;
+				calculate_delta_distance(ds,dtheta,current_x,current_y,prev_gps_x,prev_gps_y,yaw_gps,prev_gps_heading);		
+				cov_gps_heading = ks/ds + abs(dtheta)*ktheta;
+				prev_gps_x=current_x;
+				prev_gps_y=current_y;
+				prev_gps_heading=yaw_gps;				
+				//cov_gps_heading = odom_msg->pose.covariance[35];
 				//handle forward reverse problematic
 				gps_yaw_diff = yaw_gps - vehicle_heading;
 
@@ -209,7 +230,7 @@ public:
 						prior_cov(i,j) = 0;
 				}
 			}
-			// do not update angle estimate with gps angle because we only have one message
+			// do not update amasterngle estimate with gps angle because we only have one message
 			//if(sqrt( pow((odom_msg->pose.pose.position.x - prev_gps_msg.pose.pose.position.x),2) + pow(odom_msg->pose.pose.position.y - prev_gps_msg.pose.pose.position.y,2)) > 1.5 )
 			//{
 			//	ROS_DEBUG_NAMED("angle_estimator","Before angle correction: %.4f %.4f",current_heading,current_imu_cov);
@@ -254,7 +275,7 @@ public:
 	{
 		Kalman::KVector<double,1,1> state(3);
 		state = filter->getX();
-
+		
 		geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(state(3));
 
 		this->odom_trans.header.stamp = ros::Time::now();
@@ -343,7 +364,8 @@ private:
 	tf::StampedTransform transform;
 
 
-
+	double current_time;
+	double prev_time;
 	PositionEstimator* filter;
 
 	double current_heading;

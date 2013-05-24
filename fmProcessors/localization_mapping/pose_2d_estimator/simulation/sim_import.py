@@ -33,7 +33,6 @@ Revision
 
 # imports
 import csv
-from utm import utmconv
 
 class odometry_data():
 	def __init__(self, filename, max_lines):
@@ -58,39 +57,45 @@ class odometry_data():
 			# print ('  Odometry time: %f' % (self.data[self.i][0]))
 			self.i += 1
 			new_data += 1
-		return (new_data, self.data[self.i])
+		return (new_data, self.data[self.i-1])
 
+class imu_data():
+	def __init__(self, filename, max_lines):
+		self.i = 0
+		print 'Importing IMU data'
+		file = open(filename, 'rb')
+		file_content = csv.reader(file, delimiter=',')
+	 	self.data = []
+		i = 0
+		for time, ang_vel_z, orient_yaw in file_content:
+			self.data.append([float(time), float(ang_vel_z), float(orient_yaw)])
+			i += 1
+			if max_lines > 0 and i == max_lines:
+				break
+		file.close()
+		self.length = len(self.data)
+		print '\tTotal samples: %d' % (self.length) 
+
+	def get_latest(self, time):
+		new_data = 0
+		while self.i < self.length and self.data[self.i][0] <= time:
+			self.i += 1
+			new_data += 1
+		return (new_data, self.data[self.i-1])
 
 class gnss_data:
-	def __init__(self, filename, max_lines, relative_coordinates):
+	def __init__(self, filename, max_lines):
 		self.i = 0
 		print 'Importing GPS data'
 		file = open(filename, 'rb')
 		file_content = csv.reader(file, delimiter=',')
 	 	self.data = []
 		i = 0
-		uc = utmconv()
 		origo_e = 0
 		origo_n = 0
-		for time, lat, lon, fix, sat, hdop in file_content:
-			if fix > 0:
-				# convert to UTM
-				(hemisphere, zone, letter, easting, northing) = uc.geodetic_to_utm (float(lat),float(lon))
-				# use relative coordinates
-				if relative_coordinates:
-					if origo_e == 0:
-						origo_e = easting
-						origo_n = northing
-						easting = 0
-						northing = 0
-					else:
-						easting -= origo_e
-						northing -= origo_n
-			else:
-				easting = 0
-				northing = 0
+		for time, lat, lon, easting, northing, fix, sat, hdop in file_content:
 			self.data.append([float(time), float(lat), float(lon), \
-				int(fix), int(sat), float(hdop), easting, northing])
+				float(easting), float(northing), int(fix), int(sat), float(hdop)])
 			i += 1
 			if max_lines > 0 and i == max_lines:
 				break
@@ -104,5 +109,8 @@ class gnss_data:
 			# print ('  GPS time: %f' % (self.data[self.i][0]))
 			self.i += 1
 			new_data += 1
-		return (new_data, self.data[self.i])
+		if self.i < self.length:
+			return (new_data, self.data[self.i-1])
+		else:
+			return (0, False)
 

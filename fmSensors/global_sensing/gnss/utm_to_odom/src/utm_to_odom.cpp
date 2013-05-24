@@ -190,7 +190,7 @@ int main(int argc, char **argv)
 			"/fmInformation/utm");
 	n.param<std::string>("publish_topic_id", publish_topic_id,
 			"/fmInformation/gps_odom");
-	n.param<std::string>("odom_frame_id",frame_id,"odom_combined");
+	n.param<std::string>("odom_frame_id",frame_id,"odom_estimated");
 	n.param<std::string>("child_odom_frame_id",child_frame_id,"gps_link");
 	n.param<bool>("publish_relative_coordinates",publish_relative,false);
 	n.param<int>("receive_n_before_publish",utm_settled_count_top,3);

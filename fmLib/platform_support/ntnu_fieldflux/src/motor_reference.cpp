@@ -26,29 +26,33 @@ void motor_reference::setValues(DWORD ls, DWORD ld, DWORD rs, DWORD rd, double t
 	autoMode = 0;
 	wheel_radius=0.2985;
 	lin_scale=150;
-	ang_scale= lin_scale;
+	ang_scale= lin_scale*1.88;
 }
 void motor_reference::cmd_vel_callback(const geometry_msgs::Twist::ConstPtr& msg){
 	if(autoMode){
 		double lin_velocity = msg->linear.x * lin_scale;
-		double ang_velocity = msg->angular.z * ang_scale;	
+		double ang_velocity = msg->angular.z * ang_scale;
+		printf("LINEAR %f \n ANGULAR%f\n",msg->linear.x,ang_velocity);	
 		leftSpeed = lin_velocity - ang_velocity; 
 		rightSpeed = lin_velocity + ang_velocity;
+		printf("Left %d \n Right%d\n",leftSpeed,rightSpeed);	
 		if(leftSpeed < 0){
 			leftSpeed = -leftSpeed;
 			leftDir = 0x05;}
 		else if(leftSpeed == 0){
 			leftDir = 0x00;}
 		else if(leftSpeed > 0){
-			leftDir = 0x05;}
+			leftDir = 0x06;}
 	
-		if(rightSpeed < 0){
-			rightSpeed = -rightSpeed;
+		if(rightSpeed > 0){
+			rightSpeed = abs(rightSpeed);
 			rightDir = 0x05;}
 		else if(rightSpeed == 0){
 			rightDir = 0x00;}
-		else if(rightSpeed > 0){
-			rightDir = 0x05;}
+		else if(rightSpeed < 0){
+			rightSpeed=abs(rightSpeed);
+			rightDir = 0x06;}
+			
 	}
 }
 void motor_reference::joyCallback(const sensor_msgs::Joy::ConstPtr& joy){
@@ -98,7 +102,7 @@ void motor_reference::joyCallback(const sensor_msgs::Joy::ConstPtr& joy){
 			joystick_calibrated=1;	
 		}
 	}
-	//if(joyMode && joystick_calibrated){
+	if(joyMode){
 	leftSpeed = (DWORD)abs(fw - turn);
 	rightSpeed = (DWORD)abs(fw + turn);
 	if((fw-turn)>0){
@@ -118,7 +122,7 @@ void motor_reference::joyCallback(const sensor_msgs::Joy::ConstPtr& joy){
 		leftSpeed = leftSpeed/2;
 		rightSpeed = rightSpeed/2;
 	}
-	
+	}
 /*	if(slowMode){
 		leftSpeed = leftSpeed/2;
 		rightSpeed = rightSpeed/2;

@@ -61,7 +61,7 @@ void PositionEstimator::makeQ()
 	Q(1,1) = odom_var;
 	Q(1,2) = 0;
 	Q(1,3) = 0;
-	Q(1,2) = 0;
+	Q(2,1) = 0;
 	Q(2,2) = odom_var;
 	Q(2,3) = 0;
 	Q(3,1) = 0;

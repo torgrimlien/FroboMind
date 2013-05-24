@@ -28,7 +28,7 @@ protected:
 	void makeProcess();
 	void makeMeasure();
 private:
-	double gps_var,imu_var,odom_var;
+	double gps_var,imu_var,odom_var,Period;
 };
 
 #endif /* POSITIONESTIMATOR_H_ */

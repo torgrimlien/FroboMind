@@ -38,6 +38,9 @@
 #                 now supporting odometry, imu angular rate and imu_orientation
 #                 as yaw angle source
 #                 now supporting x,y,z as angular rate yaw axis (including inverted)
+# 2013-05-02 kjen Added support for absolute encoder values
+# 2013-05-15 kjen Corrected a potential bug when encoder callbacks updates
+#                 the relative tick vars while publishing is in progres.
 #
 #****************************************************************************/
 // includes
@@ -61,6 +64,10 @@
 
 #define M_PI2					2*M_PI
 
+#define ENCODER_OUTPUT_RELATIVE	1
+#define ENCODER_OUTPUT_ABSOLUTE	2
+
+
 #define YAW_AXIS_X 				1
 #define YAW_AXIS_X_INVERTED			2
 #define YAW_AXIS_Y				3
@@ -77,24 +84,25 @@ using namespace std;
 class SimpleOdom
 {
 public:
-	SimpleOdom(double tick_to_meter, double wheel_dist, int yaw_source, int yaw_axis)
+	SimpleOdom(double tick_to_meter, double wheel_dist, int encoder_output, int yaw_source, int yaw_axis)
 	{
 		this->tick_to_meter = tick_to_meter;
 		this->wheel_dist = wheel_dist;
+		this->encoder_output = encoder_output;
 		this->yaw_source = yaw_source;
 		this->yaw_axis = yaw_axis;
 
-		delta_l = delta_r = 0; // reset encoder ticks (since last published odometry)
+		delta_ticks_l = delta_ticks_r = 0; // reset encoder ticks (since last published odometry)
 		x = y = theta = 0; // reset map pose
 
 		imu_yaw = prev_imu_yaw = 0; // reset imu angle
 
 		encoder_timeout = false;
 		imu_timeout = false;
-		x_traveled=0;
 	
 		time_launch = l_time_prev = r_time_prev = imu_time_prev = ros::Time::now();
-		l_updated = r_updated = l_ready = r_ready = false;
+		l_updated = r_updated = false;
+		l_first = r_first = true;
 	}
 
 	~SimpleOdom()
@@ -122,20 +130,50 @@ public:
 
 	void processLeftEncoder(const msgs::encoder::ConstPtr& msg)
 	{
-		l_time_prev = l_time_latest;
-		l_time_latest = ros::Time::now();
-		delta_l += msg->encoderticks;
-		prev_l = *msg;
-		l_updated = true;
+		if (encoder_output == ENCODER_OUTPUT_ABSOLUTE)
+		{
+			if (l_first == false)
+			{
+				delta_ticks_l += (msg->encoderticks - prev_l.encoderticks);
+				l_time_prev = l_time_latest;
+				l_time_latest = ros::Time::now();
+				l_updated = true;
+			}
+			else
+				l_first = false;
+			prev_l = *msg;
+		}
+		else
+		{
+			delta_ticks_l += msg->encoderticks;
+			l_time_prev = l_time_latest;
+			l_time_latest = ros::Time::now();
+			l_updated = true;
+		}
 	}
 
 	void processRightEncoder(const msgs::encoder::ConstPtr& msg)
 	{
-		r_time_prev = r_time_latest;
-		r_time_latest = ros::Time::now();
-		delta_r += msg->encoderticks;
-		prev_r = *msg;
-		r_updated = true;
+		if (encoder_output == ENCODER_OUTPUT_ABSOLUTE)
+		{
+			if (r_first == false)
+			{
+				delta_ticks_r += (msg->encoderticks - prev_r.encoderticks);
+				r_time_prev = r_time_latest;
+				r_time_latest = ros::Time::now();
+				r_updated = true;
+			}
+			else
+				r_first = false;
+			prev_r = *msg;
+		}
+		else
+		{
+			delta_ticks_r += msg->encoderticks;
+			r_time_prev = r_time_latest;
+			r_time_latest = ros::Time::now();
+			r_updated = true;
+		}
 	}
 
 	void processImu(const sensor_msgs::Imu::ConstPtr& msg)
@@ -150,10 +188,7 @@ public:
 					double qz = msg->orientation.z;
 					double qw = msg->orientation.w;
 					imu_yaw = atan2(2*(qx*qy + qw*qz), qw*qw + qx*qx - qy*qy - qz*qz);
-					//double imu_yaw = tf::getYaw(msg->orientation);
-
-					//imu_yaw = -(imu_yaw- M_PI/2);					
-					//printf("Diff_odom_IMU_yaw:    %f\n\n\n\n",imu_yaw);
+					printf("imu_yaw",imu_yaw);
 				}			
 				break;
 
@@ -184,7 +219,6 @@ public:
 							break;
 					}
 					imu_yaw = angle_limit (imu_yaw);
-
 				}
 				break;
 		}
@@ -196,6 +230,7 @@ public:
 		ros::Time time_now = ros::Time::now();
 		if(l_updated && r_updated)
 		{
+			l_updated = r_updated = false;
 			encoder_timeout = false;
 
 			// check if we are receiving IMU updates
@@ -218,19 +253,21 @@ public:
 					}
 				}
 			}
-			
-			delta_l *= tick_to_meter; // convert from ticks to meter
-			delta_r *= tick_to_meter;
 
-			double dx = (delta_l + delta_r)/2; // approx. distance (assuming linear motion during dt)
-			double dtheta;
-			x_traveled+=dx;
-			printf("x_traveled x: %f \n", x_traveled);
+			// copy and reset encoder ticks since last odometry publish
+			int64_t tick_l = delta_ticks_l;
+			delta_ticks_l = 0;
+			int64_t tick_r = delta_ticks_r;
+			delta_ticks_r = 0;		
+
+			// calculate approx. distance (assuming linear motion during dt)
+			double dx = (tick_l + tick_r)*tick_to_meter/2.0;
 
 			// calculate change in orientation using odometry
+			double dtheta;
 			if (yaw_source == YAW_SOURCE_ODOMETRY)
 			{
-				dtheta = (delta_r - delta_l)/wheel_dist; 
+				dtheta = (tick_r - tick_l)*tick_to_meter/wheel_dist; 
 			}
 			else // or calculate change in orientation using IMU
 			{
@@ -238,14 +275,11 @@ public:
 				prev_imu_yaw = imu_yaw;
 			}
 
- 			delta_l = delta_r = 0;
 			double ang = theta + dtheta/2;
 			x += cos(ang)*dx; //update odometry given position of the robot
 			y += sin(ang)*dx;
 			theta += dtheta;
 			theta = angle_limit (theta); // keep theta within [0;2*pi[
-
-			// ROS_INFO("Odo %.3f %.3f %2f",x, y, theta);
 
    			//since all odometry is 6DOF we'll need a quaternion created from yaw
 			geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(theta);
@@ -266,10 +300,9 @@ public:
 			odom.pose.pose.position.x = x;
 			odom.pose.pose.position.y = y;
 			odom.pose.pose.orientation = odom_quat;
+			odom.pose.covariance=diag(covX,covY,covZ,covRx,covRy,covRz);
 			double dt = (l_time_latest - l_time_prev).toSec(); // assuming that left and right have the same interval
 			odom.twist.twist.linear.x  = dx/dt; 
-			printf("dt=%f\n",dt);
-			printf("dx/dt diff_odom=%f\n\n\n\n",odom.twist.twist.linear.x);
 			odom.twist.twist.angular.z = dtheta/dt;
 			odom_pub.publish(odom);
 		}
@@ -288,17 +321,22 @@ public:
 	ros::Publisher odom_pub;
 	tf::TransformBroadcaster odom_broadcaster;
 	std::string base_frame,odom_frame;
-
+	double covX;
+	double covY;
+	double covZ;
+	double covRx;
+	double covRy;
+	double covRz;
+	vector<vector doubleZ> covMatrix
 private:
 	double tick_to_meter, wheel_dist;
-	int yaw_source, yaw_axis;
+	int encoder_output, yaw_source, yaw_axis;
 	double imu_yaw, prev_imu_yaw;
 	bool encoder_timeout, imu_timeout;
-	double delta_l, delta_r;
-	bool l_updated, r_updated;
+	int64_t delta_ticks_l, delta_ticks_r;
+	bool l_updated, r_updated, l_first, r_first;
 	ros::Time time_launch, l_time_latest, l_time_prev, r_time_latest, r_time_prev, imu_time_latest, imu_time_prev;
-	bool l_ready, r_ready;
-	double x, y, theta,x_traveled;
+	double x, y, theta;
 	msgs::encoder prev_l, prev_r;
 	nav_msgs::Odometry odom;
 	geometry_msgs::TransformStamped odom_trans;
@@ -317,8 +355,15 @@ int main(int argc, char** argv) {
 
 	double wheel_radius, wheel_ticks_rev, tick_to_meter;
 	double wheel_dist;
-	int yaw_source, yaw_axis;
+	int encoder_output, yaw_source, yaw_axis;
 	ros::Subscriber s1,s2,s3;
+	covX=0.001;
+	covY=0.001;
+	covZ=99999;
+	covRx=0.0001;
+	covRy=0.0001;
+	covRz=0.0001;
+	
 
 	// publishers
 	nh.param<string>("odom_pub", publish_topic, "/fmKnowledge/odom");
@@ -326,17 +371,34 @@ int main(int argc, char** argv) {
 	// subscribers
 	nh.param<string>("enc_left_sub", subscribe_enc_l, "/fmInformation/encoder_left");
 	nh.param<string>("enc_right_sub", subscribe_enc_r, "/fmInformation/encoder_right");
-	nh.param<string>("imu_sub", subscribe_imu, "imu/data");
+	nh.param<string>("imu_sub", subscribe_imu, "/fmInformation/imu");
 
 	// robot parameters
-	nh.param<double>("diff_steer_wheel_radius", wheel_radius, 0.29124);
-	nh.param<double>("diff_steer_wheel_ticks_per_rev", wheel_ticks_rev, 83333);
-	nh.param<double>("diff_steer_wheel_distance", wheel_dist, 1.88);
+	nh.param<double>("diff_steer_wheel_radius", wheel_radius, 0.25);
+	nh.param<double>("diff_steer_wheel_ticks_per_rev", wheel_ticks_rev, 360);
+	nh.param<double>("diff_steer_wheel_distance", wheel_dist, 1.0);
 	tick_to_meter = 2*M_PI*wheel_radius/wheel_ticks_rev;
-	printf("tick_to_meter %f \n",tick_to_meter);
-	printf("ticks/rev: %f \n",wheel_ticks_rev);
-
+	printf("wheel_radius=%f,wheel_ticks/rev=%f",wheel_radius,wheel_ticks_rev);
 	// other parameters
+	std::string encoder_output_str;
+	nh.param<string>("encoder_output", encoder_output_str, "not initialized");
+	if ( encoder_output_str.compare ("relative") == 0)
+	{
+		encoder_output = ENCODER_OUTPUT_RELATIVE;
+		ROS_INFO("%s Encoder output: Relative", IDENT);
+	}
+	else if ( encoder_output_str.compare ("absolute") == 0)
+	{
+		encoder_output = ENCODER_OUTPUT_ABSOLUTE;
+		ROS_INFO("%s Encoder output: Absolute", IDENT);
+	}
+	else
+	{
+		encoder_output = ENCODER_OUTPUT_RELATIVE;
+		ROS_WARN("%s Encoder output: Unknown, defaults to relative", IDENT);
+	}
+
+
 	std::string yaw_source_str;
 	nh.param<string>("yaw_angle_source", yaw_source_str, "not initialized");
 	if ( yaw_source_str.compare ("odometry") == 0)
@@ -378,7 +440,7 @@ int main(int argc, char** argv) {
 			yaw_axis = YAW_AXIS_Y;
 			ROS_INFO("%s IMU yaw axis (ENU): Y", IDENT);
 		}
-		else if ( yaw_axis_str.compare ("-y") == 0)
+		else if ( yaw_axirobot_pose_ekfs_str.compare ("-y") == 0)
 		{
 			yaw_axis = YAW_AXIS_Y_INVERTED;
 			ROS_INFO("%s IMU yaw axis (ENU): Y (inverted)", IDENT);
@@ -401,7 +463,7 @@ int main(int argc, char** argv) {
 	}
 
 	// init class
-	SimpleOdom p(tick_to_meter, wheel_dist, yaw_source, yaw_axis);
+	SimpleOdom p(tick_to_meter, wheel_dist, encoder_output, yaw_source, yaw_axis);
 
 	// subscriber callback functions
 	s1 = nh.subscribe(subscribe_enc_l,15,&SimpleOdom::processLeftEncoder,&p);

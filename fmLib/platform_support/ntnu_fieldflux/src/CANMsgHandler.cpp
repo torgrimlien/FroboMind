@@ -321,6 +321,9 @@ int   main( int        argc,
   ECI_RESULT hResult = ECI_OK;
   //motor_ref_t ref;
   motor_reference ref;
+  std::string subscribe_controller;
+  n.param<std::string>("controller_subscriber",subscribe_controller,"fmController/output");
+    OS_Printf(">> %s <<\n\n", subscribe_controller.c_str());
   n.param<double>("wheel_distance",ref.wheel_distance,1.88);
   n.param<double>("wheel_radius", ref.wheel_radius,0.298);
   n.param<double>("joystick_linear",ref.throttle_scale,200);
@@ -330,12 +333,14 @@ int   main( int        argc,
   msgs::encoder encoder_right;
   msgs::encoder encoder_left;
   ros::Subscriber sub;
+  ros::Subscriber sub_controller;
   sub = n.subscribe("joy",100,&motor_reference::joyCallback, &ref);
-  OS_Printf(">> Linux ECI API Demo program <<\n\n");
+  sub_controller=n.subscribe(subscribe_controller,100,&motor_reference::cmd_vel_callback, &ref);
+  OS_Printf(">> %s <<\n\n", subscribe_controller.c_str());
   ros::Publisher param_pub = n.advertise<ntnu_fieldflux::motorValues>("motor_values",100); 
   ros::Publisher encoder_left_pub = n.advertise<msgs::encoder>("/fmInformation/encoder_left",10);
   ros::Publisher encoder_right_pub = n.advertise<msgs::encoder>("/fmInformation/encoder_right",10);
- 
+  
   
   tp.v.SDOResponseSent=0;
   hResult = initUSB2CAN(&tp);
