@@ -1,0 +1,6 @@
+<launch>
+<node pkg="gps_gpgga" name="gps_gpgga_node" type="gps_gpgga_node" output="screen" respawn="true">
+	        <param name="publish_topic_id" type="string" value="/fmSensors/gpgga_msg" />	 
+	        <param name="subscribe_topic_id" type="string" value="/fmData/rx" />	
+</node>	
+</launch>

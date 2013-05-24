@@ -1,0 +1,93 @@
+<!--
+This launch file runs the pose 2d estimator with simulated sensor output based
+on a rosbag recorded during a drive test of the Armadillo Pichi robot.
+-->
+
+<launch>
+	<!-- Armadillo IV parameters --> 
+	<param name="robot_max_velocity" value="2.0"/>
+	
+
+<!--	<param name="/use_sim_time" value="true"/> -->
+
+	<group ns="transforms">
+		<node pkg="tf" type="static_transform_publisher" name="base_link_broadcaster" args="0 0 0 0 0 0 base_footprint base_link 100"/>
+	</group>
+
+
+
+	<group ns="fmSensors">
+		<!-- launch conversion node to convert IntStamped messages to encoder messages -->
+		<!-- (this is a temporary fix until we get all encoder messages changed to IntStamped) -->
+	<!--	<node pkg="int_stamped_to_encoder" name="enc_conversion" type="encoder_converter.py" /> -->
+
+		<!-- extract data from $GPGGA NMEA messages transmitted by the GPS -->
+		<node pkg="gps_gpgga" name="nmea_to_gpgga" type="gps_gpgga_node" output="screen">
+		    <param name="subscribe_topic_id" value="/fmData/gps_rx" />
+			<param name="publish_topic_id" value="/fmInformation/gpgga" />
+		</node>
+
+		  <node pkg="gpgga_to_utm" name="gpgga_to_utm_node" type="gpgga_to_utm_node">
+			<param name="subscribe_topic_id" type="string" value="/fmSensors/gpgga_msg" />
+			<param name="publish_topic_id" type ="string" value="/fmInformation/gpgga_utm_msg"/>	
+		  </node>
+	  <node pkg="utm_to_odom" name="utm_to_odom_node" type="utm_to_odom_node">
+		<param name="subscribe_topic_id" type="string" value="/fmInformation/gpgga_utm_msg" />
+		<param name="publish_topic_id" type ="string" value="/fmInformation/gps_odom"/>
+		<param name="gps_heading_variance" type="double" value="0.01"/>
+	
+	  </node>
+	</group>
+
+	<group ns="fmProcessors">
+		<!-- estimate robot 2d pose -->
+		<node pkg="robot_pose_ekf" type="robot_pose_ekf" name="robot_pose_ekf">
+		  <param name="output_frame" value="odom_combined"/>
+		  <param name="freq" value="30.0"/>
+		  <param name="sensor_timeout" value="1.0"/>  
+		  <param name="odom_used" value="true"/>
+		  <param name="imu_used" value="true"/>
+		  <param name="vo_used" value="true"/>
+
+		  <remap from="odom" to="/fmKnowledge/odom" />
+		  <remap from="imu_data" to="/imu/data" />
+		  <remap from="vo" to="/fmInformation/gps_odom" />
+		</node>
+
+		<!-- plot maps of pose, gnss and odometry data -->
+		<node pkg="pose_2d_estimator" name="robot_track_map" type="robot_track_map_node.py" output="screen" >
+			<param name="pose_sub" value="/fmKnowledge/pose_sim" />
+			<param name="gnss_sub" value="/fmInformation/gpgga_tranmerc" />
+			<param name="odom_sub" value="/fmKnowledge/encoder_odom_sim" />
+			<param name="imu_sub" value="/imu/data" />
+			<param name="plot_pose_track" value="true" /> <!-- remember to use proper values for ekf_initial_guess_ at pose_2d_estimator for this plot -->
+			<param name="plot_gnss_track" value="true" />
+			<param name="plot_odometry_track" value="true" />
+			<param name="plot_pose_yaw" value="true" />
+			<param name="easting_offset" value="-599319.0" />
+			<param name="northing_offset" value="-6615238.0" />
+			<param name="trackpoint_threshold" value="0.1" /> <!-- [m] -->
+			<param name="map_update_frequency" value="2.0" /> <!-- [Hz] -->
+			<param name="map_title" value="Robot track" />
+			<param name="map_window_size" value="5.0" /> <!-- [inches] -->
+		</node>
+
+		<!-- calculate odometry based on encoders and IMU yaw axis orientation -->
+		<node pkg="differential_odometry" name="differential_odometry" type="differential_odometry_node" output="screen" >
+			<param name="enc_left_sub" value="/fmInformation/encoder_left" />
+			<param name="enc_right_sub" value="/fmInformation/encoder_right" />
+			<param name="imu_sub" value="/imu/data" />
+			<param name="odom_pub" value="/fmKnowledge/encoder_odom_sim" />
+			<param name="encoder_output" value="relative"></param>  
+		    <!--<param name="yaw_angle_source" value="imu_orientation"></param> -->
+			<param name="yaw_angle_source" value="XXimu_angular_velocity"></param>
+			<param name="imu_angular_velocity_yaw_axis" value="z"></param>
+			<param name="diff_steer_wheel_radius" value="0.29124"/>
+			<!-- param name="diff_steer_wheel_ticks_per_rev" value="1562"/> -->
+			<param name="diff_steer_wheel_ticks_per_rev" value="83333"/>
+			<param name="diff_steer_wheel_distance" value="1.88"/>
+			<param name="vehicle_frame" value="base_footprint"></param>      
+			<param name="odom_estimate_frame" value="/odom_combined"></param>      
+		</node>
+	</group>
+</launch>

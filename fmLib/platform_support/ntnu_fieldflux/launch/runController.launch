@@ -1,0 +1,9 @@
+<launch>
+	<node pkg="ntnu_fieldflux" name="potentialFieldController" type="potentialFieldController" output="screen">
+		<param name="subscribe_topic" type="string" value="/fmProcessors/odom_estimate"/>
+		<param name="v_max" type="double" value="1.0"/>
+		<param name="goal_x" type="double" value="599429"/>
+		<param name="goal_y" type="double" value="6615310"/>
+		<param name="goal_yaw" type="double" value="0"/>
+	</node>
+</launch>
