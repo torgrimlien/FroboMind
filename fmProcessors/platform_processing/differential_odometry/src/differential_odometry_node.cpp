@@ -300,7 +300,6 @@ public:
 			odom.pose.pose.position.x = x;
 			odom.pose.pose.position.y = y;
 			odom.pose.pose.orientation = odom_quat;
-			odom.pose.covariance=diag(covX,covY,covZ,covRx,covRy,covRz);
 			double dt = (l_time_latest - l_time_prev).toSec(); // assuming that left and right have the same interval
 			odom.twist.twist.linear.x  = dx/dt; 
 			odom.twist.twist.angular.z = dtheta/dt;
@@ -321,13 +320,7 @@ public:
 	ros::Publisher odom_pub;
 	tf::TransformBroadcaster odom_broadcaster;
 	std::string base_frame,odom_frame;
-	double covX;
-	double covY;
-	double covZ;
-	double covRx;
-	double covRy;
-	double covRz;
-	vector<vector doubleZ> covMatrix
+
 private:
 	double tick_to_meter, wheel_dist;
 	int encoder_output, yaw_source, yaw_axis;
@@ -357,12 +350,7 @@ int main(int argc, char** argv) {
 	double wheel_dist;
 	int encoder_output, yaw_source, yaw_axis;
 	ros::Subscriber s1,s2,s3;
-	covX=0.001;
-	covY=0.001;
-	covZ=99999;
-	covRx=0.0001;
-	covRy=0.0001;
-	covRz=0.0001;
+
 	
 
 	// publishers
@@ -440,7 +428,7 @@ int main(int argc, char** argv) {
 			yaw_axis = YAW_AXIS_Y;
 			ROS_INFO("%s IMU yaw axis (ENU): Y", IDENT);
 		}
-		else if ( yaw_axirobot_pose_ekfs_str.compare ("-y") == 0)
+		else if ( yaw_axis_str.compare ("-y") == 0)
 		{
 			yaw_axis = YAW_AXIS_Y_INVERTED;
 			ROS_INFO("%s IMU yaw axis (ENU): Y (inverted)", IDENT);
