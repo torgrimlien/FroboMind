@@ -24,12 +24,14 @@ void motor_reference::setValues(DWORD ls, DWORD ld, DWORD rs, DWORD rd, double t
 	stayInLoop=0;
 	joyMode = 1;
 	autoMode = 0;
-	wheel_radius=0.2985;
+	receiving_cmd =0;
 	lin_scale=150;
 	ang_scale= lin_scale*1.88;
 }
 void motor_reference::cmd_vel_callback(const geometry_msgs::Twist::ConstPtr& msg){
+		receiving_cmd=1;
 	if(autoMode){
+		
 		double lin_velocity = msg->linear.x * lin_scale;
 		double ang_velocity = msg->angular.z * ang_scale;
 		printf("LINEAR %f \n ANGULAR%f\n",msg->linear.x,ang_velocity);	
@@ -45,16 +47,17 @@ void motor_reference::cmd_vel_callback(const geometry_msgs::Twist::ConstPtr& msg
 			leftDir = 0x06;}
 	
 		if(rightSpeed > 0){
-			rightSpeed = abs(rightSpeed);
 			rightDir = 0x05;}
 		else if(rightSpeed == 0){
 			rightDir = 0x00;}
 		else if(rightSpeed < 0){
-			rightSpeed=abs(rightSpeed);
+			rightSpeed=-rightSpeed;
 			rightDir = 0x06;}
+		}
+		
 			
 	}
-}
+
 void motor_reference::joyCallback(const sensor_msgs::Joy::ConstPtr& joy){
 	stayInLoop=joy->buttons[7];
 	
@@ -73,7 +76,7 @@ void motor_reference::joyCallback(const sensor_msgs::Joy::ConstPtr& joy){
 		joyMode=1;
 		autoMode=0;
 	}
-	if(joy->buttons[3]){
+	if(joy->buttons[3] && receiving_cmd == 1){
 		joyMode=0;
 		autoMode=1;
 	}

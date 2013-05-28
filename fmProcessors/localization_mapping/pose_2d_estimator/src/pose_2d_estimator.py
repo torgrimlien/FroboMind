@@ -119,7 +119,7 @@ class pose_2d_preprocessor():
 			N = 3
 			sat = 4
 			hdop = 5
-			print "self.gnss[-1][fix]==%.f" %(self.gnss[-1][fix])
+			#print "self.gnss[-1][fix]==%.f" %(self.gnss[-1][fix])
 			if self.gnss[-1][fix] >= 1:	#  and self.gnss_orientation_timeout < self.gnss[-1][time_stamp]:
  							# if latest position is based on a fixed solution
 				i = 1
@@ -129,7 +129,7 @@ class pose_2d_preprocessor():
 					i += 1
 					if self.gnss[-i][fix] >= 1: 
 						distance = sqrt ((self.gnss[-1][E]- self.gnss[-i][E])**2 + (self.gnss[-1][N]- self.gnss[-i][N])**2)
-				if distance >= 0.5: # if we found two coordinates at the required distance
+				if distance >= 0.6: # if we found two coordinates at the required distance
 				
 					# calc gnss coordinate vector heading
 					easting_axis_vector_len = self.gnss[-1][E] - self.gnss[-i][E]
@@ -226,7 +226,8 @@ class pose_2d_preprocessor():
 class pose_2d_ekf():
 	def __init__(self):
 		self.pi2 = 2.0*pi
-		self.prevX = self.set_initial_guess([0.0, 0.0, 0.0])
+		self.prevX = np.matrix([0.0, 0.0, 0.0])
+		#print self.prevX
 		self.prevCov = np.matrix([[100000000**2.0,0.0,0.0],[0.,100000000**2,0.0], \
 			[0.0,0.0,pi**2]]) # high variance for the initial guess 
 		self.Q = np.identity(3)
@@ -234,11 +235,13 @@ class pose_2d_ekf():
 		self.Hyaw = np.matrix([[0., 0., 0.,],[0., 0., 1.]]) # Yaw angle observation matrix
 
 	def set_initial_guess (self, x):
+		#print x
 		self.prevX = np.matrix(x)
+		#print self.prevX
 
 	def system_update (self, delta_dist, var_dist, delta_angle, var_angle):
 		u = [delta_dist, delta_angle]
-
+		#print self.prevX
 		# predicted (A priori) state estimate: X-[t] = X[t-1] + u[t]
 		priX = self.f(self.prevX, u)
 

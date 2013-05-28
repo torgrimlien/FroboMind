@@ -39,6 +39,7 @@ import numpy as np
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import Quaternion
+from std_msgs.msg import Int16
 from msgs.msg import gpgga_tranmerc
 from math import pi, sqrt, atan2
 from pose_2d_estimator import pose_2d_preprocessor, pose_2d_ekf, yaw_ekf
@@ -72,6 +73,7 @@ class Pose2DEstimatorNode():
 		self.imu_topic = rospy.get_param("~imu_sub",'/imu/data')
 		self.gga_topic = rospy.get_param("~gga_sub",'/fmInformation/gpgga_tranmerc')
 		self.pose_topic = rospy.get_param("~pose_pub",'/fmKnowledge/pose')
+		self.use_gps_topic=rospy.get_param("~use_gps_topic",'/fmController/use_gps')
 		print "IMU_SUB=%s" %(self.imu_topic)
 		print "POSE_SUB=%s" %(self.pose_topic)
 		
@@ -79,26 +81,32 @@ class Pose2DEstimatorNode():
 		rospy.Subscriber(self.odom_topic, Odometry, self.on_odom_topic)
 		rospy.Subscriber(self.imu_topic, Imu, self.on_imu_topic)
 		rospy.Subscriber(self.gga_topic, gpgga_tranmerc, self.on_gga_topic)
-
+		rospy.Subscriber(self.use_gps_topic, Int16, self.on_use_gps_topic)
 		# setup publish topics
 		self.pose_pub = rospy.Publisher(self.pose_topic, Odometry)
 		self.br = tf.TransformBroadcaster()
-
+		
 		# initialize estimator (preprocessing)
 		self.pp = pose_2d_preprocessor (robot_max_velocity)
-
+	
 		# initialize estimator (EKF)
+		self.use_gps = True;
 		self.ekf = pose_2d_ekf()
 		self.pose = [ekf_init_guess_easting, ekf_init_guess_northing, ekf_init_guess_yaw]
 		self.ekf.set_initial_guess(self.pose)
 		self.yawekf = yaw_ekf() # !!! TEMPORARY HACK
-
+		#self.gnss_initialized = False
 		# Call updater function
 		rospy.loginfo(rospy.get_name() + ": Start")
 		self.r = rospy.Rate(10) # set updater frequency [Hz]
 		self.updater()
-		print "intialized"
 
+		#print "intialized"
+	def on_use_gps_topic(self, msg):
+		if msg.data == 0:
+			self.use_gps=False
+		else:
+			self.use_gps=True
 	def on_odom_topic(self, msg):
 		x = msg.pose.pose.position.x
 		y = msg.pose.pose.position.y
@@ -108,7 +116,7 @@ class Pose2DEstimatorNode():
 		self.quaternion[2] = msg.pose.pose.orientation.z
 		self.quaternion[3] = msg.pose.pose.orientation.w
 		(roll,pitch,yaw) = euler_from_quaternion(self.quaternion)
-
+		#print "wheel_yaw=", yaw;
 		if self.odom_topic_received == True: # if we have received a first odom message
 
 			# EKF system update (odometry)
@@ -118,15 +126,15 @@ class Pose2DEstimatorNode():
 			self.pp.add_odometry (time_recv, delta_dist, delta_angle)
 			self.pose = self.ekf.system_update (delta_dist, self.odometry_var_dist, delta_angle, self.odometry_var_angle)
 			self.pose[2] = self.yawekf.system_update (delta_angle, self.odometry_var_angle) # !!! TEMPORARY HACK
-
+			#print self.pose[2]	
 			# publish the estimated pose	
 			self.publish_pose()
-
-		# housekeeping
 		self.odom_topic_received = True
 		self.odometry_x_prev = x
 		self.odometry_y_prev = y
 		self.odometry_yaw_prev = yaw
+		# housekeeping
+
 
 	def on_imu_topic(self, msg):
 		self.quaternion[0] = msg.orientation.x
@@ -135,6 +143,7 @@ class Pose2DEstimatorNode():
 		self.quaternion[3] = msg.orientation.w
 		#print "ImuMessage Received!"
 		time_recv_imu = msg.header.stamp
+		#print time_recv_imu
 		#rot = self.quat(0,1,0,pi/3)
 		#self.quaternion = self.multiply(self.quaternion, rot)
 		#rot = self.quat(1,0,0,pi/3)
@@ -145,39 +154,45 @@ class Pose2DEstimatorNode():
 		yaw_rate = msg.angular_velocity.z
 		#print "yaw_rate = %.3f" %(yaw_rate)
 		#self.pose[2]=yaw;
-		
-		if self.imu_topic_received == True:
+		yaw = yaw
+			
+		#print "imu_yaw=", yaw
+		if True:#self.imu_topic_received == True:
 			#EKF system update (IMU)
 			self.pp.add_imu_measurement(time_recv_imu, yaw_rate,yaw)
 			delta_yaw = self.angle_diff(yaw,self.imu_yaw_prev)
 			#self.pose[2] = self.yawekf.system_update(delta_yaw,self.imu_var_angle) # NOT ACCURATE ENOUGH FROM THE VECTORNAV !!!
-			#self.pose = self.ekf.measurement_update_yaw(yaw,self.imu_var_angle);
+			self.pose[2] = self.yawekf.measurement_update(yaw,self.imu_var_angle);	
 			self.pose[2] = self.yawekf.system_update (delta_yaw, self.imu_var_angle) # !!! TEMPORARY HACK
 			#print "yaw %.3fs pose[2]= %f.3fs yaw-pose = %.3f" % (yaw,self.pose[2],yaw-self.pose[2])
+			#pose[2]=yaw
+		else:
+			self.imu_topic_received = True			
 		self.imu_yaw_prev = yaw
-		self.imu_topic_received = True
+			
 		
 
 	def on_gga_topic(self, msg):
-		if msg.fix > 0: # if satellite fix
+		if msg.fix > 0:# and self.use_gps == True: # if satellite fix
 			# GNSS data preprocessing
+			print "HEI!!"
 			time_recv = msg.time_recv.secs + msg.time_recv.nsecs*1e-9
 			error = self.pp.add_gnss_measurement (time_recv, msg.easting, msg.northing, msg.fix, msg.sat, msg.hdop)
 			if error == False: # if we have a valid position 
 				var_pos = self.pp.estimate_variance_gnss()
 				#var_pos = 49
-				print "Error = FALSE!var =", var_pos
+				#print "Error = FALSE!var =", var_pos
 				# EKF measurement update (GNSS)
 				self.pose = self.ekf.measurement_update_pos ([msg.easting, msg.northing], var_pos)
 				(error, gnss_yaw) = self.pp.estimate_orientation_from_gnss_positions()
 				error=False
-				print "gnss yaw =", gnss_yaw
+				#print "gnss yaw =", gnss_yaw
 				if error == False:
 					var_gnss_yaw = 0.04
 					#self.pose = self.ekf.measurement_update_yaw(gnss_yaw, var_gnss_yaw) # !!! TEMPORARY HACK
 					self.pose[2] = self.yawekf.measurement_update(gnss_yaw, var_gnss_yaw) # !!! TEMPORARY HACK
+		
 
-	
 	def multiply(self,q1,q2):
 		"""
 			Multiplies two quaternions

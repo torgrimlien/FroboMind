@@ -5,7 +5,7 @@
 #include <sstream>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Twist.h>
-
+#include <std_msgs/Int16.h>
 
 
 class SCcontroller
@@ -16,9 +16,13 @@ public:
 	double k1;
 	double k2;
 	double k3;
+	double k4;
 	double beta;
 	double lambda;
+	//controller parameters when close to the goal
 	
+	double r_no_gps;
+
 	//robot parameters
 	double yaw;
 	double pos_x;
@@ -36,34 +40,75 @@ public:
 	double delta;
 	double theta;
 	double r;
+	double r_last;
 
 	//parameters sent by controller
 	double v;
 	double omega;
+	int pos_ok;
+	int yaw_ok;
+	int close_to_goal;
 	/*!
 	 *The publisher to publish the geometry twist message from the controller
 	*/
 	ros::Publisher pub;
+	ros::Publisher pub2;
 
 	
 	void updateParameters(){
 		r= sqrt(pow(pos_x-goal_x,2) + pow(pos_y-goal_y,2));
+		if (r>r_no_gps && close_to_goal == 0){
+
+		
 		alpha = atan2(goal_y-pos_y,goal_x-pos_x);
+		printf("distance_goalx = %f  distance_goaly = %f",goal_x-pos_x,goal_y-pos_y);
 		delta = yaw - alpha;
 		theta = goal_yaw - alpha;
 		correct_angle(delta);
 		correct_angle(theta);
-		K = -1/r*(k2*(delta-atan(-k1*theta))+(1+k1/(1+k1*k1*theta*theta))*sin(theta));
+		K = -1/r*(k2*(delta-atan(-k1*theta))+(1+k1/(1+k1*k1*theta*theta))*sin(delta));
 		v = v_max/(1+beta*pow(abs(K),lambda));
 		omega = v*K;
+		if (fabs(omega) > 1){
+			v=v/fabs(omega);
+			omega=1/fabs(omega);
+		}
 		printf("r=%f, \nalpha=%f \ndelta=%f \n theta=%f \n v=%f \n omega=%f \nK=%f\n\n",r,alpha,delta,theta,v,omega,K);
-		
+		}
+		else{
+			close_to_goal =1;
+			double diff_yaw = goal_yaw-yaw;
+			correct_angle(diff_yaw);
+			if(yaw_ok==0){			
+				omega=k4*(diff_yaw);
+				if(omega>1)omega=1;
+				if(omega<-1)omega=-1;			
+			}
+			if(pos_ok ==0){			
+			v=0.3;}
+			if(r_last<r){
+				v=0;
+				pos_ok = 1;}
+			if(fabs(diff_yaw)<0.015){
+				omega=0;
+				printf("YAW_OK!");
+				yaw_ok = 1;}
+			}
+			printf("v =%f    omega= %f r = %f\n\n, goal_yaw-yaw %f \n",v,omega,r,fabs(goal_yaw-yaw));
+		r_last = r;
 	}		
 	void publishSystemInput(){
 		geometry_msgs::Twist msg;
 		msg.linear.x=v;
 		msg.angular.z=omega;
 		pub.publish(msg);
+		
+	}
+	void publishGpsOn(int pwr){
+		std_msgs::Int16 msg;
+		msg.data=pwr;
+		pub2.publish(msg);
+		printf("Turing GPS off!!!!\n");
 		
 	}
 	void processOdometry(const nav_msgs::Odometry::ConstPtr& msg){
@@ -74,6 +119,7 @@ public:
 		double qz=msg->pose.pose.orientation.z;
 		double qw=msg->pose.pose.orientation.w;
 		yaw = atan2(2*(qx*qy + qw*qz),qw*qw + qx*qx -qy*qy - qz*qz);
+		printf("yaw=%f \n",yaw*180/3.14);
 		updateParameters();
 		publishSystemInput();
 	}
@@ -111,29 +157,39 @@ private:
 	ros::Subscriber goal_sub;
 
 	SCcontroller node;
-	
+	std::string publish_gps_on_off;
 	std::string publish_topic;
 	std::string subscribe_odom;
 	std::string subscribe_goal;
-
+	node.pos_ok=0;
+	node.yaw_ok=0;
+	node.close_to_goal=0;
 	nh.param<std::string>("subscribe_topic",subscribe_odom,"/fmProcessors/odom_estimate_test");
 	nh.param<std::string>("goal_subscribe_topic",subscribe_goal,"/fmProcessors/goal");
 	nh.param<std::string>("publish_topic", publish_topic,"/fmController/output");
+	nh.param<std::string>("publish_topic_gps_on_of", publish_gps_on_off,"/fmController/use_gps");
+	
 	printf("%s \n",subscribe_odom.c_str());
 	nh.param<double>("k1",node.k1,1);
 	nh.param<double>("k2",node.k2,5);
 	nh.param<double>("k3",node.k3,0.1);
+	nh.param<double>("k4",node.k4,0.1);
 	nh.param<double>("beta",node.beta,0.4);
 	nh.param<double>("lambda",node.lambda,2);
 	nh.param<double>("v_max",node.v_max,0.1);
 	nh.param<double>("goal_x",node.goal_x,0);
 	nh.param<double>("goal_y",node.goal_y,0);
 	nh.param<double>("goal_yaw",node.goal_yaw,0);
+	nh.param<double>("r_no_gps", node.r_no_gps, 1.5);
+	
 	printf("v_max= %f \n",node.v_max);
 	odom_sub = nh.subscribe<nav_msgs::Odometry>(subscribe_goal,10,&SCcontroller::processWaypoint,&node);
 	odom_sub = nh.subscribe<nav_msgs::Odometry>(subscribe_odom,10,&SCcontroller::processOdometry,&node);
 	node.pub = n.advertise<geometry_msgs::Twist>(publish_topic,5);
-
+	node.pub2 = n.advertise<std_msgs::Int16>(publish_gps_on_off,5);
+	std_msgs::Int16 turn_on_gps;
+	turn_on_gps.data=1;
+	node.pub2.publish(turn_on_gps);
 	ros::spin();	
 
 	

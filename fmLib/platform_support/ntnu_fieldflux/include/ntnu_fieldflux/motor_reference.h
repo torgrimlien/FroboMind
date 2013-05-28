@@ -46,7 +46,7 @@ public:
 	int right_release;	
 	int stayInLoop;
 	int slowMode;
-
+	int receiving_cmd;
 	motor_reference();	
 	void cmd_vel_callback(const geometry_msgs::Twist::ConstPtr& mot);	
 	void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);	

@@ -1,9 +1,20 @@
+<!--
+This launch file runs the pose 2d estimator with simulated sensor output based
+on a rosbag recorded during a drive test of the Armadillo Pichi robot.
+close to home:
+	x= 599323.769267
+	y =6615275.37502
+-->
 <launch>
 	<node pkg="ntnu_fieldflux" name="potentialFieldController" type="potentialFieldController" output="screen">
-		<param name="subscribe_topic" type="string" value="/fmProcessors/odom_estimate"/>
-		<param name="v_max" type="double" value="1.0"/>
-		<param name="goal_x" type="double" value="599429"/>
-		<param name="goal_y" type="double" value="6615310"/>
-		<param name="goal_yaw" type="double" value="0"/>
+		<param name="subscribe_topic" type="string" value="/fmKnowledge/pose"/>
+		<param name="v_max" type="double" value="1.4"/>
+		<param name="goal_x" type="double" value="599292.604075"/>
+		<param name="goal_y" type="double" value="6615249.51001"/>
+		<param name="goal_yaw" type="double" value="0.0"/>
+		<param name="k1" type="double" value="2"/>
+		<param name="k2" type="double" value="6"/>
+		<param name="k4" type="double" value="1"/>
+		<param name="r_no_gps" type="double" value ="1.0"/>
 	</node>
 </launch>

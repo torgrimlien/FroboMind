@@ -61,7 +61,7 @@ class track_map_node():
 		self.trkpt_threshold = rospy.get_param("~trackpoint_threshold",0.1) # [m]
 		map_update_frequency = rospy.get_param("~map_update_frequency", 1.0)
 		map_title = rospy.get_param("~map_title", "Track")
-		map_window_size = rospy.get_param("~map_window_size",5.0) # [inches]
+		map_window_size = rospy.get_param("~map_window_size",10.0) # [inches]
 		rospy.loginfo(rospy.get_name() + " Coordinate offset: E%.3f N%.3f" % (offset_e, offset_n))
 		rospy.loginfo(rospy.get_name() + " Trackpoint threshold: %.3f m" % (self.trkpt_threshold))
  
