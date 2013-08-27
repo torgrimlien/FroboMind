@@ -26,10 +26,10 @@ class WPWriter():
 		self.wait_for_measurement = False
 		self.wp_request_topic = rospy.getparam("wp_request_topic",'/fmProcessors/wp_request')
 		self.wp_topic = rospy.getparam("waypoint_topic",'/fmProcessors/waypoint')
-		self.meas_complete_topic = rospy.getparam("measurement_complete_topic","/fmSensors/meas_comp")
+		self.meas_complete_topic = rospy.getparam("measurement_complete_topic","/fmInformation/meas_comp")
 		
 		rospy.Subscriber(self.wp_request_topic, Int32, self.on_WP_request)
-		rospy.Subscriber(self.wp_request_topic, Int32, self.on_Measurement_complete)
+		rospy.Subscriber(self.meas_complete_topic, Int32, self.on_Measurement_complete)
 		self.wp_pub = rospy.Publisher(self.wp_topic,Odometry)
 		with open('test.csv','rb') as f:
 			reader = csv.reader(f);
