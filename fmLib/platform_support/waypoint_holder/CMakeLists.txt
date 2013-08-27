@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(ntnu_fieldflux)
+project(waypoint_holder)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs message_generation)
+find_package(catkin REQUIRED COMPONENTS msgs rospy roscpp)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -12,7 +12,7 @@ find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs message_generation
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
-## See http://ros.org/doc/groovy/api/catkin/html/user_guide/setup_dot_py.html
+## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
 catkin_python_setup()
 
 #######################################
@@ -20,13 +20,11 @@ catkin_python_setup()
 #######################################
 
 ## Generate messages in the 'msg' folder
-add_message_files(
-   FILES
-   motorValues.msg
-   motorVal.msg
-   GPSFix.msg
-   GPSStatus.msg
- )
+# add_message_files(
+#   FILES
+#   Message1.msg
+#   Message2.msg
+# )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -40,19 +38,20 @@ add_message_files(
 #   DEPENDENCIES
 #   std_msgs
 # )
-generate_messages(DEPENDENCIES std_msgs)
+
 ###################################
 ## catkin specific configuration ##
 ###################################
 ## The catkin_package macro generates cmake config files for your package
 ## Declare things to be passed to dependent projects
+## INCLUDE_DIRS: uncomment this if you package contains header files
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
    INCLUDE_DIRS include
-   LIBRARIES ntnu_fieldflux
-   CATKIN_DEPENDS roscpp rospy std_msgs message_runtime
+#  LIBRARIES waypoint_holder
+#  CATKIN_DEPENDS rospy std_msgs
 #  DEPENDS system_lib
 )
 
@@ -62,41 +61,34 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(include
+# include_directories(include)
+include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a cpp library
-# add_library(ntnu_fieldflux
-#   src/${PROJECT_NAME}/ntnu_fieldflux.cpp
+# add_library(waypoint_holder
+#   src/${PROJECT_NAME}/waypoint_holder.cpp
 # )
-add_library(ECI src/EciDemo109.c src/EciDemoCommon.c  src/initUSB2CAN.c src/motor_reference.cpp src/PdoConfiguration.c src/CANopenMessages.c)
+
 ## Declare a cpp executable
-# add_executable(ntnu_fieldflux_node src/ntnu_fieldflux_node.cpp)
-add_executable(listener src/listener.cpp)
-add_executable(parameterPrinter src/parameterPrinter.cpp)
-add_executable(CANMsgHandler src/CANMsgHandler.cpp)
-add_executable(potentialFieldController src/smoothCurvatureController.cpp)
-add_executable(setWaypoint src/setWaypoint.cpp)
+#add_executable(waypoint_holder_node src/WPwriter.py)
+
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(ntnu_fieldflux_node ntnu_fieldflux_generate_messages_cpp)
+# add_dependencies(waypoint_holder_node waypoint_holder_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(ntnu_fieldflux_node
+# target_link_libraries(waypoint_holder_node
 #   ${catkin_LIBRARIES}
 # )
-target_link_libraries(CANMsgHandler ECI eci109DriverLinux ${catkin_LIBRARIES})
-target_link_libraries(parameterPrinter ECI eci109DriverLinux ${catkin_LIBRARIES})
-target_link_libraries(listener ${catkin_LIBRARIES})
-target_link_libraries(potentialFieldController ${catkin_LIBRARIES})
-target_link_libraries(setWaypoint ${catkin_LIBRARIES})
+
 #############
 ## Install ##
 #############
 
 # all install targets should use catkin DESTINATION variables
-# See http://ros.org/doc/groovy/api/catkin/html/adv_user_guide/variables.html
+# See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
@@ -106,7 +98,7 @@ target_link_libraries(setWaypoint ${catkin_LIBRARIES})
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS ntnu_fieldflux ntnu_fieldflux_node
+# install(TARGETS waypoint_holder waypoint_holder_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -131,7 +123,7 @@ target_link_libraries(setWaypoint ${catkin_LIBRARIES})
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_ntnu_fieldflux.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_waypoint_holder.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

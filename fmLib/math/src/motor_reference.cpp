@@ -16,8 +16,11 @@ void motor_reference::setValues(DWORD ls, DWORD ld, DWORD rs, DWORD rd, double t
 	throttle_scale=thrt;
 	turn_scale = turn;
 	joystick_calibrated=0;
-
-	slowMode = 1;
+	left_full=0;
+	right_full=0;
+	left_release=0;
+	right_release=0;
+	slowMode = 0;
 	stayInLoop=0;
 	joyMode = 1;
 	autoMode = 0;
@@ -78,35 +81,31 @@ void motor_reference::joyCallback(const sensor_msgs::Joy::ConstPtr& joy){
 		autoMode=1;
 	}
 	if(joystick_calibrated==0){
-		if(joy->axes[2]==1.0 && joy->axes[5]==1.0)
-		{
-			joystick_calibrated=1;
+		printf("Joystick not calibrated, please press and release both RT and LT\n");
+		if(joy->axes[2]==-1.0 && joy->axes[5]==-1.0){
+			joystick_calibrated=1;		
 		}
 	}
-	if(joyMode){
-	leftSpeed = (DWORD)abs(fw - turn);
-	rightSpeed = (DWORD)abs(fw + turn);
-	if((fw-turn)>0){
-		leftDir = 0x06;}
-	else if((fw-turn)==0){
-		leftDir = 0x00;}
-	else if((fw-turn)<0){
-		leftDir= 0x05;}
+	if(joyMode && joystick_calibrated){
+		leftSpeed = (DWORD)abs(fw - turn);
+		rightSpeed = (DWORD)abs(fw + turn);
+		if((fw-turn)>0){
+			leftDir = 0x06;}
+		else if((fw-turn)==0){
+			leftDir = 0x00;}
+		else if((fw-turn)<0){
+			leftDir= 0x05;}
 	
-	if((fw+turn)<0){
-		rightDir = 0x06;}
-	else if((fw+turn)==0){
-		rightDir = 0x00;}
-	else if((fw+turn)>0){
-		rightDir= 0x05;}
-	if(slowMode){
-		leftSpeed = leftSpeed/2;
-		rightSpeed = rightSpeed/2;
+		if((fw+turn)<0){
+			rightDir = 0x06;}
+		else if((fw+turn)==0){
+			rightDir = 0x00;}
+		else if((fw+turn)>0){
+			rightDir= 0x05;}
+		if(slowMode){
+			leftSpeed = leftSpeed/2;
+			rightSpeed = rightSpeed/2;
+		}
 	}
-	}
-/*	if(slowMode){
-		leftSpeed = leftSpeed/2;
-		rightSpeed = rightSpeed/2;
-	}*/
-//	}
+
 }
