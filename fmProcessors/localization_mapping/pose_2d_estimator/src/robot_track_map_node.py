@@ -72,7 +72,7 @@ class track_map_node():
 		# Get topic names
 		pose_topic = rospy.get_param("~pose_sub",'/fmKnowledge/pose')
 		gnss_topic = rospy.get_param("~gnss_sub",'/fmInformation/gpgga_tranmerc')
-		odom_topic = rospy.get_param("~odom_sub",'/fmKnowledge/encoder_odom')
+		odom_topic = rospy.get_param("~odom_sub",'/fmController/pos_used')
 
 		# Setup subscription topic callbacks
 		rospy.Subscriber(pose_topic, Odometry, self.on_pose_topic)

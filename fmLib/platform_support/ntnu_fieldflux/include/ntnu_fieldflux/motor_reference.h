@@ -5,6 +5,7 @@
 //#include <ntnu_fieldflux/motorVal.h>
 #include <sensor_msgs/Joy.h>
 #include <geometry_msgs/Twist.h>
+#include <std_msgs/Bool.h>
 ///////////////////////////////////////////////////////////////////////////////
 /**
   class holding all the parameters sent to the controller via CAN
@@ -40,6 +41,7 @@ public:
 	int joyMode;
 	int autoMode;
 	int joystick_calibrated;
+	int joystick_connected;
 	int left_full;
 	int right_full;
 	int left_release;
@@ -47,8 +49,10 @@ public:
 	int stayInLoop;
 	int slowMode;
 	int receiving_cmd;
+	bool drive_ok;
 	motor_reference();	
-	void cmd_vel_callback(const geometry_msgs::Twist::ConstPtr& mot);	
+	void cmd_vel_callback(const geometry_msgs::Twist::ConstPtr& mot);
+	void drive_ok_callback(const std_msgs::Bool::ConstPtr& msg);	
 	void joyCallback(const sensor_msgs::Joy::ConstPtr& joy);	
 	void setValues(DWORD ls, DWORD ld, DWORD rs, DWORD rd, double thrt,double turn);
 	DWORD getLeftSpeed(){return leftSpeed;}
@@ -56,7 +60,8 @@ public:
 	DWORD getLeftDir(){return leftDir;}
 	DWORD getRightDir(){return rightDir;}
 	DWORD getLeftState(){return leftState;}
-	DWORD getRightState(){return rightState;}	
+	DWORD getRightState(){return rightState;}
+	int getJoystickConnected(){return joystick_connected;}
 
 };
 

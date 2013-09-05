@@ -72,7 +72,7 @@ class Pose2DEstimatorNode():
 		self.odom_topic = rospy.get_param("~odom_sub",'/fmKnowledge/encoder_odom')
 		self.imu_topic = rospy.get_param("~imu_sub",'/imu/data')
 		self.gga_topic = rospy.get_param("~gga_sub",'/fmInformation/gpgga_tranmerc')
-		self.pose_topic = rospy.get_param("~pose_pub",'/fmKnowledge/pose')
+		self.pose_topic = rospy.get_param("pose_pub",'/fmKnowledge/pose')
 		self.use_gps_topic=rospy.get_param("~use_gps_topic",'/fmController/use_gps')
 		print "IMU_SUB=%s" %(self.imu_topic)
 		print "POSE_SUB=%s" %(self.pose_topic)
@@ -252,7 +252,5 @@ if __name__ == '__main__':
     rospy.init_node('pose_2d_estimator_node')
 
     # Go to class functions that do all the heavy lifting. Do error checking.
-    try:
-        node_class = Pose2DEstimatorNode()
-    except rospy.ROSInterruptException: pass
-
+    
+    node_class = Pose2DEstimatorNode()

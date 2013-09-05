@@ -16,6 +16,7 @@
 // include files
 #include <ntnu_fieldflux/CANMessageHandler.h>
 #include <msgs/encoder.h>
+#include <string.h>
 //////////////////////////////////////////////////////////////////////////
 // static constants, types, macros, variables
 
@@ -120,6 +121,7 @@ void *CANReadLoop(void *arg){
     thread_param_t* self = (thread_param_t*)arg;
     rc = pthread_mutex_unlock(&mutex);
     int stay_in_loop = 1;
+
     ECI_CTRL_MESSAGE stcCtrlMsg         = {0};
 
 //    DWORD           dwStartTime         = 0;
@@ -258,7 +260,7 @@ void *CANReadLoop(void *arg){
 		OS_Printf("\nNo heartbeat from  node 1!\n");
 		lastHeartBeat1 = OS_GetTimeInMs();
 		}
-	if(currentTime - lastHeartBeat2>1000){
+    if(currentTime - lastHeartBeat2>1500){
 		OS_Printf("\nNo heartbeat from  node 2!\n");
 		lastHeartBeat2 = OS_GetTimeInMs();	
 	}
@@ -317,30 +319,34 @@ int   main( int        argc,
 	
 
 
-
+ 
   ECI_RESULT hResult = ECI_OK;
   //motor_ref_t ref;
   motor_reference ref;
-  std::string subscribe_controller;
-  n.param<std::string>("controller_subscriber",subscribe_controller,"fmController/output");
-    OS_Printf(">> %s <<\n\n", subscribe_controller.c_str());
-  n.param<double>("wheel_distance",ref.wheel_distance,1.88);
-  n.param<double>("wheel_radius", ref.wheel_radius,0.298);
-  n.param<double>("joystick_linear",ref.throttle_scale,200);
-  n.param<double>("joystick_turn",ref.turn_scale, 150);
+  
+  std::string drive_ok_topic;
+  std::string wp_controller_sub_topic;
+
+  n.param<std::string>("drive_ok_topic",drive_ok_topic,"/fmKnowledge/drive_ok");
+  n.param<std::string>("wp_controller_input",wp_controller_sub_topic,"/fmController/output");
   thread_param_t tp;
   ntnu_fieldflux::motorValues motor_data;
   msgs::encoder encoder_right;
   msgs::encoder encoder_left;
   ros::Subscriber sub;
-  ros::Subscriber sub_controller;
+  ros::Subscriber sub2;
+  ros::Subscriber wp_controller_sub;
+
   sub = n.subscribe("joy",100,&motor_reference::joyCallback, &ref);
-  sub_controller=n.subscribe(subscribe_controller,100,&motor_reference::cmd_vel_callback, &ref);
-  OS_Printf(">> %s <<\n\n", subscribe_controller.c_str());
+
+  sub2 = n.subscribe(drive_ok_topic,10,&motor_reference::drive_ok_callback, &ref);
+
+  wp_controller_sub=n.subscribe(wp_controller_sub_topic,40,&motor_reference::cmd_vel_callback,&ref);
+  OS_Printf(">> Linux ECI API Demo program <<\n\n");
   ros::Publisher param_pub = n.advertise<ntnu_fieldflux::motorValues>("motor_values",100); 
   ros::Publisher encoder_left_pub = n.advertise<msgs::encoder>("/fmInformation/encoder_left",10);
   ros::Publisher encoder_right_pub = n.advertise<msgs::encoder>("/fmInformation/encoder_right",10);
-  
+ 
   
   tp.v.SDOResponseSent=0;
   hResult = initUSB2CAN(&tp);
@@ -361,10 +367,11 @@ int   main( int        argc,
 	DWORD rs; 
 	DWORD ld; 
 	DWORD rd;
+	DWORD dummyByte = 0x00;
         send_mes.wCtrlClass                            = ECI_CTRL_CAN;
         send_mes.u.sCanMessage.dwVer                   = ECI_STRUCT_VERSION_V0;
         send_mes.u.sCanMessage.u.V0.dwMsgId            = 0x201;
-        send_mes.u.sCanMessage.u.V0.uMsgInfo.Bits.dlc  = 3;
+        send_mes.u.sCanMessage.u.V0.uMsgInfo.Bits.dlc  = 7;
 	send_mes.u.sCanMessage.u.V0.uMsgInfo.Bits.type = ECI_CAN_MSGTYPE_DATA;
 
 	send_mes2.wCtrlClass                            = ECI_CTRL_CAN;
@@ -372,16 +379,17 @@ int   main( int        argc,
         send_mes2.u.sCanMessage.u.V0.dwMsgId            = 0x202;
         send_mes2.u.sCanMessage.u.V0.uMsgInfo.Bits.dlc  = 3;
   while(ref.stayInLoop==0){
-	
       if(OS_GetTimeInMs()-sendSpeedTime > 50){
-		
+          if(!ref.getJoystickConnected()){
+              OS_Printf("No connection to joystick \n\n");
+          }
 	//update timer for when last PDO setting speed was sent	
 	sendSpeedTime = OS_GetTimeInMs();
 	//update the parameter of the motor_values message
 	ls = ref.getLeftSpeed();
 	rs = ref.getRightSpeed();
-	motor_data.leftMotor_dir = ld = ref.getLeftDir();
-	motor_data.rightMotor_dir = rd = ref.getRightDir();
+    motor_data.leftMotor_dir = ld = ref.getLeftDir();
+    motor_data.rightMotor_dir = rd = ref.getRightDir();
 	motor_data.leftMotor_w = tp.v.leftMotor.velocity;
 	motor_data.leftMotor_w_ref = tp.v.leftMotor.targetVelocity;
 	motor_data.rightMotor_w = tp.v.rightMotor.velocity;
@@ -400,25 +408,34 @@ int   main( int        argc,
         memcpy( &send_mes.u.sCanMessage.u.V0.abData[2],
                 &ld,
                 1);
-	
-        memcpy( &send_mes2.u.sCanMessage.u.V0.abData[0],
+	memcpy( &send_mes.u.sCanMessage.u.V0.abData[3],
+                &dummyByte,
+                1);
+	memcpy( &send_mes.u.sCanMessage.u.V0.abData[4],
+                &rs,
+                2);
+        memcpy( &send_mes.u.sCanMessage.u.V0.abData[6],
+                &rd,
+                1);
+/*        memcpy( &send_mes2.u.sCanMessage.u.V0.abData[0],
                 &rs,
                 2);
         memcpy( &send_mes2.u.sCanMessage.u.V0.abData[2],
                 &rd,
-                1);
+                1);*/
         pthread_mutex_lock(&mutex);
         hResult = ECI109_CtrlSend(tp.ip.dwCtrlHandle, &send_mes, ECIDEMO_TX_TIMEOUT);
-	hResult = ECI109_CtrlSend(tp.ip.dwCtrlHandle, &send_mes2, ECIDEMO_TX_TIMEOUT);
+//	hResult = ECI109_CtrlSend(tp.ip.dwCtrlHandle, &send_mes2, ECIDEMO_TX_TIMEOUT);
 	
         pthread_mutex_unlock(&mutex);
         if(ECI_OK == hResult){
 	   
           
-          /*EciPrintCtrlMessage(&send_mes);
-	  OS_Printf("\n");
-	  EciPrintCtrlMessage(&send_mes2);
-	  */	
+          EciPrintCtrlMessage(&send_mes);
+      OS_Printf("\n");
+/*	  EciPrintCtrlMessage(&send_mes2);
+	  OS_Printf("\n");*/
+	  	
         }
         else{
 	    OS_Printf("\n Error sending\n");
@@ -465,7 +482,7 @@ int   main( int        argc,
   OS_Sleep(1000);
   ECI109_Release();
   ECI109_CtrlStop(tp.ip.dwCtrlHandle,ECI_STOP_FLAG_RESET_CTRL);
-  //OS_Printf("-> Closing CAN bus <-\n");
+  OS_Printf("-> Closing CAN bus <-\n");
 
   return 0;
 }

@@ -25,16 +25,16 @@ on a rosbag recorded during a drive test of the Armadillo Pichi robot.
 	    <param name="max_drift_rate" type="double" value="1.0"/>
 	  </node>
   
-	  <node pkg="ntnu_fieldflux" type="CANMsgHandler" name="CAN" output="screen"/>
+	  <node pkg="ntnu_fieldflux" type="CANMsgHandler" name="CAN"/>
 	  <node pkg="ntnu_fieldflux" type="elevator_controller.py" name="elevator">
 		<param name="odom_topic" type="string" value="/fmKnowledge/encoder_odom"/>
 	  </node>
-	  <node pkg="ntnu_fieldflux" type="potentialFieldController" name="navigation_controller">
+	  <node pkg="ntnu_fieldflux" type="potentialFieldController" name="navigation_controller" output="screen">
 		<param name="wheel_odom_topic" type="string" value="/fmKnowledge/encoder_odom"/>
 		<param name="subscribe_odom" type="string" value="/fmKnowledge/pose"/>		
 	  </node>
 
-	  <node pkg ="ntnu_fieldflux" type="waypoint_holder_node.py" name="waypoint_holder" output="screen"/>
+	  <node pkg ="ntnu_fieldflux" type="waypoint_holder_node.py" name="waypoint_holder" output="screen" cwd="node"/>
 
 	  <node pkg="joy" type="joy_node" name="joy_input">
 		<param name="dev" type="string" value="/dev/input/js0"/>
@@ -89,7 +89,7 @@ on a rosbag recorded during a drive test of the Armadillo Pichi robot.
 
 		<!-- plot maps of pose, gnss and odometry data -->
 		<node pkg="pose_2d_estimator" name="robot_track_map" type="robot_track_map_node.py" output="screen" >
-			<param name="pose_sub" value="/fmKnowledge/pose" />
+			<param name="pose_sub" value="/fmController/pos_used" />
 			<param name="gnss_sub" value="/fmInformation/gpgga_tranmerc" />
 			<param name="odom_sub" value="/fmKnowledge/encoder_odom" />
 			<param name="imu_sub" value="/imu/data" />

@@ -16,7 +16,8 @@ void motor_reference::setValues(DWORD ls, DWORD ld, DWORD rs, DWORD rd, double t
 	throttle_scale=thrt;
 	turn_scale = turn;
 	joystick_calibrated=0;
-
+	drive_ok = true;
+    joystick_connected = 0;
 	slowMode = 1;
 	stayInLoop=0;
 	joyMode = 1;
@@ -27,7 +28,7 @@ void motor_reference::setValues(DWORD ls, DWORD ld, DWORD rs, DWORD rd, double t
 }
 void motor_reference::cmd_vel_callback(const geometry_msgs::Twist::ConstPtr& msg){
 		receiving_cmd=1;
-	if(autoMode){
+    if(autoMode && drive_ok && joystick_connected){
 		
 		double lin_velocity = msg->linear.x * lin_scale;
 		double ang_velocity = msg->angular.z * ang_scale;
@@ -51,14 +52,24 @@ void motor_reference::cmd_vel_callback(const geometry_msgs::Twist::ConstPtr& msg
 			rightSpeed=-rightSpeed;
 			rightDir = 0x06;}
 		}
-		
+    if(joystick_connected ==0){
+        rightSpeed =0;
+        leftSpeed=0;
+        rightDir=0;
+        leftDir=0;
+    }
 			
 	}
-
-void motor_reference::joyCallback(const sensor_msgs::Joy::ConstPtr& joy){
-	stayInLoop=joy->buttons[7];
+void motor_reference::drive_ok_callback(const std_msgs::Bool::ConstPtr& msg){
+	drive_ok = msg->data;
 	
-	double fw = (joy->axes[2] - joy->axes[5])*throttle_scale;
+}
+void motor_reference::joyCallback(const sensor_msgs::Joy::ConstPtr& joy){
+	if(joy->buttons[7] && joy->buttons[6]){
+		stayInLoop=1;
+	}
+    joystick_connected = joy->buttons[5];
+    double fw = (joy->axes[5] - joy->axes[4])*throttle_scale;
 	double turn = joy->axes[0]*turn_scale;
 	if(abs(turn)<5){
 		turn = 0;
@@ -78,31 +89,39 @@ void motor_reference::joyCallback(const sensor_msgs::Joy::ConstPtr& joy){
 		autoMode=1;
 	}
 	if(joystick_calibrated==0){
-		if(joy->axes[2]==1.0 && joy->axes[5]==1.0)
+        printf("joystick_calibrated = 0 \n\n");
+        if(joy->axes[4]==1.0 && joy->axes[5]==1.0)
 		{
 			joystick_calibrated=1;
 		}
 	}
-	if(joyMode){
-	leftSpeed = (DWORD)abs(fw - turn);
-	rightSpeed = (DWORD)abs(fw + turn);
-	if((fw-turn)>0){
-		leftDir = 0x06;}
-	else if((fw-turn)==0){
-		leftDir = 0x00;}
-	else if((fw-turn)<0){
-		leftDir= 0x05;}
-	
-	if((fw+turn)<0){
-		rightDir = 0x06;}
-	else if((fw+turn)==0){
-		rightDir = 0x00;}
-	else if((fw+turn)>0){
-		rightDir= 0x05;}
-	if(slowMode){
-		leftSpeed = leftSpeed/2;
-		rightSpeed = rightSpeed/2;
+	if(joyMode && joystick_calibrated && drive_ok){
+		leftSpeed = (DWORD)abs(fw - turn);
+		rightSpeed = (DWORD)abs(fw + turn);
+		if((fw-turn)>0){
+			leftDir = 0x06;}
+		else if((fw-turn)==0){
+			leftDir = 0x00;}
+		else if((fw-turn)<0){
+			leftDir= 0x05;}
+		
+		if((fw+turn)<0){
+			rightDir = 0x06;}
+		else if((fw+turn)==0){
+			rightDir = 0x00;}
+		else if((fw+turn)>0){
+			rightDir= 0x05;}
+
+		if(slowMode){
+			leftSpeed = leftSpeed/2;
+			rightSpeed = rightSpeed/2;
+		}
 	}
+	if (!drive_ok){
+		leftSpeed = 0;
+		rightSpeed = 0;
+		leftDir = 0;
+		rightDir = 0;	
 	}
 /*	if(slowMode){
 		leftSpeed = leftSpeed/2;

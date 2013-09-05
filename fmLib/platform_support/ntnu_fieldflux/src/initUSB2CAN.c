@@ -28,7 +28,6 @@ ECI_RESULT initUSB2CAN(thread_param_t *tp){
   tp->ip.dwHwIndex   = 0;
   tp->ip.dwCtrlIndex = 0;
 
-  OS_Printf("\n>> ECI Demo for USB-to-CAN compact <<\n");
 
   //*** Prepare Hardware parameter structure
   tp->ip.stcHwPara.wHardwareClass = ECI_HW_USB;
@@ -61,7 +60,6 @@ ECI_RESULT initUSB2CAN(thread_param_t *tp){
   }
   tp->ip.dwCtrlHandle  = ECI_INVALID_HANDLE;
 
-  OS_Printf("\n>> ECI CAN Demo <<\n");
 
   //*** Open given controller of given board
   if(ECI_OK == hResult)

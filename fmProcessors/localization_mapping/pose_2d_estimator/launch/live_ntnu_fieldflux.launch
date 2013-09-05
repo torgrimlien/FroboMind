@@ -25,9 +25,10 @@ on a rosbag recorded during a drive test of the Armadillo Pichi robot.
 	    <param name="max_drift_rate" type="double" value="1.0"/>
 	  </node>
   
-	  <node pkg="ntnu_fieldflux" type="CANMsgHandler" name="CAN" output="screen">
-
-	  </node>
+	  <node pkg="ntnu_fieldflux" type="CANMsgHandler" name="CAN" output="screen"/>
+	  <node pkg="ntnu_fieldflux" type="elevator_controller.py" name="elevator"/>
+	  <node pkg="ntnu_fieldflux" type="waypoint_holder.py" name="waypoint_holder"/>
+	  
 	  <node pkg="joy" type="joy_node" name="joy_input">
 		<param name="dev" type="string" value="/dev/input/js0"/>
 		<param name="deadzone" value="0.10"/>
