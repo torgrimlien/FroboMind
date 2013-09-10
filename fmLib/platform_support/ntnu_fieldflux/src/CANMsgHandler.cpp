@@ -17,6 +17,7 @@
 #include <ntnu_fieldflux/CANMessageHandler.h>
 #include <msgs/encoder.h>
 #include <string.h>
+#include <std_msgs/Int32.h>
 //////////////////////////////////////////////////////////////////////////
 // static constants, types, macros, variables
 
@@ -211,6 +212,8 @@ void *CANReadLoop(void *arg){
 		 
 				
 		break;
+        case 0x189:
+            self->elevator = stcCtrlMsg.u.sCanMessage.u.V0.abData[0];
 	    case 0x228:
                 rc = pthread_mutex_lock(&mutex);
                 memcpy(&self->v.leftMotor.ud, &stcCtrlMsg.u.sCanMessage.u.V0.abData[0], sizeof(int16_t));
@@ -326,16 +329,20 @@ int   main( int        argc,
   
   std::string drive_ok_topic;
   std::string wp_controller_sub_topic;
+  std::string elevator_topic;
 
-  n.param<std::string>("drive_ok_topic",drive_ok_topic,"/fmKnowledge/drive_ok");
+  n.param<std::string>("drive_ok_topic",drive_ok_topic,"/fmInformation/drive_ok");
   n.param<std::string>("wp_controller_input",wp_controller_sub_topic,"/fmController/output");
+  n.param<std::string>("end_swithc_topic",elevator_topic,"/fmInformation/end_switch");
   thread_param_t tp;
   ntnu_fieldflux::motorValues motor_data;
   msgs::encoder encoder_right;
   msgs::encoder encoder_left;
+  std_msgs::Int32 elevator_state;
   ros::Subscriber sub;
   ros::Subscriber sub2;
   ros::Subscriber wp_controller_sub;
+  ros::Publisher elev_pub =n.advertise<std_msgs::Int32>(elevator_topic,4);
 
   sub = n.subscribe("joy",100,&motor_reference::joyCallback, &ref);
 
@@ -447,9 +454,10 @@ int   main( int        argc,
 	tp.v.leftMotor.ticks = 0;
 	encoder_right.encoderticks = tp.v.rightMotor.ticks;
 	encoder_right_pub.publish(encoder_right);
+    elevator_state.data = tp.elevator;
 	tp.v.rightMotor.ticks = 0;
 	param_pub.publish(motor_data);
-	
+    elev_pub.publish(elevator_state);
 	ros::spinOnce();
 	ECI109_CtrlStop(tp.ip.dwCtrlHandle,ECI_STOP_FLAG_CLEAR_TX_FIFO);
 	ECI109_CtrlStart(tp.ip.dwCtrlHandle);

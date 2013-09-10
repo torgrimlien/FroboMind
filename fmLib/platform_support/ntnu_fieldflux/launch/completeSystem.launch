@@ -29,7 +29,8 @@ on a rosbag recorded during a drive test of the Armadillo Pichi robot.
 	  <node pkg="ntnu_fieldflux" type="elevator_controller.py" name="elevator">
 		<param name="odom_topic" type="string" value="/fmKnowledge/encoder_odom"/>
 	  </node>
-	  <node pkg="ntnu_fieldflux" type="potentialFieldController" name="navigation_controller" output="screen">
+ 	  <node pkg="ntnu_fieldflux" type="measurement_dummy.py" name="measurement_node"/>
+	  <node pkg="ntnu_fieldflux" type="potentialFieldController" name="navigation_controller" output = "screen">
 		<param name="wheel_odom_topic" type="string" value="/fmKnowledge/encoder_odom"/>
 		<param name="subscribe_odom" type="string" value="/fmKnowledge/pose"/>		
 	  </node>

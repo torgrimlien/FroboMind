@@ -53,10 +53,17 @@ typedef struct __ixxat_param_t
 }  ixxat_param_t;
 
 //struct parsed to the thread reading CANmessages
+enum elevator_position{
+    middle = 0x07,
+    bottom = 0x06,
+    top    = 0x05,
+    both   = 0x04
+};
 typedef struct thread_param_t
 {
     vehicle_t v;
     ixxat_param_t ip;
+    int elevator;
 } thread_param_t;
 
 typedef struct motor_ref_t

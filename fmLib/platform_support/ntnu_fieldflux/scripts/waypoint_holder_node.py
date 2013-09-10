@@ -29,14 +29,17 @@ class WPWriter():
 		self.measurement_complete = False
 		self.wp_request_topic = rospy.get_param("wp_request_topic",'/fmInformation/goal_reached')
 		self.wp_topic = rospy.get_param("waypoint_topic",'/fmInformation/waypoint')
-		self.meas_complete_topic = rospy.get_param("measurement_complete_topic","/fmInformation/meas_comp")
-		
+		self.meas_complete_topic = rospy.get_param("measurement_complete_topic","/fmInformation/drive_ok")
+		self.initiate_measurement_topic = rospy.get_param("init_measurement_topic","/fmInformation/initiate_measurement")
+		self.current_waypoint_type = ''
+		self.wait_for_drive_ok = False
 		rospy.Subscriber(self.wp_request_topic, Bool, self.on_WP_request)
 		rospy.Subscriber(self.meas_complete_topic, Bool, self.on_Measurement_complete)
 		self.wp_pub = rospy.Publisher(self.wp_topic,Odometry)
+		self.meas_init_pub = rospy.Publisher(self.initiate_measurement_topic, Bool);
 
 #		rospy.loginfo("All subscribers initialized")
-		with open('test.csv','rb') as f:
+		with open('testParking.csv','rb') as f:
 #			rospy.loginfo("csv file opened")
 			reader = csv.reader(f);
 			i=1;
@@ -59,11 +62,11 @@ class WPWriter():
 						self.format_error = True
 						print 'row',i,'col 2 is not numeric:',row[2]
 					if row[3]=='Measure':
-						self.wp_type.append(0)
+						self.wp_type.append(row[3])
 					elif row[3] == 'Stop':
-						self.wp_type.append(1)
+						self.wp_type.append([3])
 					elif row[3] == 'DriveThrough':
-						self.wp_type.append(2)
+						self.wp_type.append(row[3])
 					else:
 						self.format_error = True
 						print 'row',i,'col 3 is has wrong format:',row[3],'should be Measure,Stop or DriveThrough'
@@ -82,25 +85,36 @@ class WPWriter():
 		rospy.spin()
 	def on_WP_request(self,msg):
 		rospy.loginfo("Waypoint requested")
-		
-		self.wait_for_measurement = True;
+		if self.current_waypoint_type == 'Measure':
+			self.wait_for_measurement = True
+			self.initiate_Measurement();
+
+		if self.current_waypoint_type == 'DriveThrough':
+			self.publish_waypoint()
+
+		if self.current_waypoint_type == 'Stop':
+			self.wait_for_drive_ok = True
 
 	def on_Measurement_complete(self,msg):
 		rospy.loginfo("Measurement complete")
-		self.measurement_complete = True;
+		self.measurement_complete = msg.data;
 		if self.wait_for_measurement == True and self.measurement_complete == True:
 			self.wait_for_measurement = False
 			rospy.loginfo("publishing waypoint")
 			self.publish_waypoint()
 
-
+	def initiate_Measurement(self):
+		im = Bool()
+		im.data = True
+		self.meas_init_pub.publish(im);
+		self.wait_for_measurement = True;	
 	
 	def publish_waypoint(self):
 
 		x=self.x_pos.pop(0)
 		y=self.y_pos.pop(0)
 		h=self.heading.pop(0)
-
+		self.current_waypoint_type = self.wp_type.pop(0);
 		self.wp_quat = quaternion_from_euler(0,0,float(h))
 		print x,y,h,self.wp_quat
 		wp = Odometry()

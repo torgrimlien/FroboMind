@@ -90,12 +90,17 @@ public:
 		correct_angle(delta);
 		correct_angle(theta);
 		K = -1/r*(k2*(delta-atan(-k1*theta))+(1+k1/(1+k1*k1*theta*theta))*sin(delta));
+        if(fabs(K)>0.15){
+            K=0.15*(K/fabs(K));
+        }
 		v = v_max/(1+beta*pow(abs(K),lambda));
 		omega = v*K;
+
         if (fabs(omega) > 0.5){
-			v=v/fabs(omega);
-			omega=1/fabs(omega);
-		}
+            v=0.5*v/fabs(omega);
+            omega=omega*0.5/fabs(omega);
+        }
+
         if (r<r_threshold){
             v=0;
             omega = 0;
@@ -241,22 +246,22 @@ private:
         nh.param<std::string>("acive_pose_pub", active_pose_topic,"/fmController/pos_used");
 
     //	printf("%s \n",subscribe_odom.c_str());
-        nh.param<double>("k1",node.k1,1.0);
+        nh.param<double>("k1",node.k1,0.5);
         nh.param<double>("k2",node.k2,5.0);
         nh.param<double>("k3",node.k3,0.1);
         nh.param<double>("k4",node.k4,0.1);
         nh.param<double>("beta",node.beta,0.4);
         nh.param<double>("lambda",node.lambda,2.0);
-        nh.param<double>("v_max",node.v_max,1.0);
+        nh.param<double>("v_max",node.v_max,2.2);
         nh.param<double>("goal_x",node.goal_x,0.0);
         nh.param<double>("goal_y",node.goal_y,0.0);
         nh.param<double>("goal_yaw",node.goal_yaw,0.0);
-        nh.param<double>("r_no_gps", node.r_no_gps, 2.0);
-        nh.param<double>("r_threshold",node.r_threshold,0.4);
+        nh.param<double>("r_no_gps", node.r_no_gps, 4.0);
+        nh.param<double>("r_threshold",node.r_threshold,0.3);
 
     //	printf("v_max= %f \n",node.v_max);
         node.v_max_far = node.v_max;
-        node.v_max_close = node.v_max/2;
+        node.v_max_close = node.v_max/2.5;
         node.hasGoal =0;
         odom_sub = nh.subscribe<nav_msgs::Odometry>(subscribe_goal,10,&SCcontroller::processWaypoint,&node);
         goal_sub = nh.subscribe<nav_msgs::Odometry>(subscribe_odom,10,&SCcontroller::processOdometry,&node);
