@@ -108,8 +108,8 @@ class elevator():
 			#To be able to drive after driving the elevator, the user must press RS before driving, this to avvoid driving with the elevator down
 			self.drive_ok.data = True;
 			self.drive_ok_pub.publish(self.drive_ok)
-		if(msg.buttons[5]==0):
-			self.init_relay();
+		#if(msg.buttons[5]==0):
+		#	self.init_relay();
 	def on_initiate_measurement(self,msg):
 		rospy.loginfo("initiate_measurement")
 		if self.elev_down_succeded ==0:

@@ -110,7 +110,7 @@ public:
 		printf("r=%f, \nalpha=%f \ndelta=%f \n theta=%f \n v=%f \n omega=%f \nK=%f\n\n",r,alpha,delta,theta,v,omega,K);
 
 
-        printf("v =%f    omega= %f r = %f\n\n, goal_yaw-yaw %f \n",v,omega,r,fabs(goal_yaw-yaw));
+        printf("v =%f    omega= %f r = %f\n\n,yaw %f \n",v,omega,r,yaw);
 
 	}		
 	void publishSystemInput(){
@@ -162,6 +162,7 @@ public:
             d_ym = current_y - prev_y;
             d_yaw = current_yaw - prev_yaw;
             yaw   = yaw + d_yaw;
+            correct_angle(yaw);
             d_x = sqrt(d_xm*d_xm +d_ym*d_ym)*cos(yaw);
             d_y = sqrt(d_xm*d_xm +d_ym*d_ym)*sin(yaw);
             prev_x = current_x;
@@ -170,7 +171,7 @@ public:
             active_pose.pose.pose.position.x= pos_x = pos_x + d_x;
             active_pose.pose.pose.position.y= pos_y = pos_y + d_y;
 
-            correct_angle(yaw);
+
             active_pose.pose.pose.orientation = tf::createQuaternionMsgFromYaw(yaw);
             active_pose_pub.publish(active_pose);
             if(hasGoal){
@@ -246,7 +247,7 @@ private:
         nh.param<std::string>("acive_pose_pub", active_pose_topic,"/fmController/pos_used");
 
     //	printf("%s \n",subscribe_odom.c_str());
-        nh.param<double>("k1",node.k1,0.5);
+        nh.param<double>("k1",node.k1,1.5);
         nh.param<double>("k2",node.k2,5.0);
         nh.param<double>("k3",node.k3,0.1);
         nh.param<double>("k4",node.k4,0.1);

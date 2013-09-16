@@ -15,9 +15,9 @@ void motor_reference::setValues(DWORD ls, DWORD ld, DWORD rs, DWORD rd, double t
 	rightDir = rd;
 	throttle_scale=thrt;
 	turn_scale = turn;
-	joystick_calibrated=0;
+    joystick_calibrated=0;
 	drive_ok = true;
-    joystick_connected = 0;
+    joystick_connected = 1;
 	slowMode = 1;
 	stayInLoop=0;
 	joyMode = 1;
@@ -28,7 +28,7 @@ void motor_reference::setValues(DWORD ls, DWORD ld, DWORD rs, DWORD rd, double t
 }
 void motor_reference::cmd_vel_callback(const geometry_msgs::Twist::ConstPtr& msg){
 		receiving_cmd=1;
-    if(autoMode && drive_ok && joystick_connected){
+    if(autoMode && drive_ok){
 		
 		double lin_velocity = msg->linear.x * lin_scale;
 		double ang_velocity = msg->angular.z * ang_scale;
@@ -52,12 +52,12 @@ void motor_reference::cmd_vel_callback(const geometry_msgs::Twist::ConstPtr& msg
 			rightSpeed=-rightSpeed;
 			rightDir = 0x06;}
 		}
-    if(joystick_connected ==0){
+    /*if(joystick_connected ==0){
         rightSpeed =0;
         leftSpeed=0;
         rightDir=0;
         leftDir=0;
-    }
+    }*/
 			
 	}
 void motor_reference::drive_ok_callback(const std_msgs::Bool::ConstPtr& msg){
@@ -95,7 +95,7 @@ void motor_reference::joyCallback(const sensor_msgs::Joy::ConstPtr& joy){
 			joystick_calibrated=1;
 		}
 	}
-	if(joyMode && joystick_calibrated && drive_ok){
+    if(joyMode && drive_ok){
 		leftSpeed = (DWORD)abs(fw - turn);
 		rightSpeed = (DWORD)abs(fw + turn);
 		if((fw-turn)>0){

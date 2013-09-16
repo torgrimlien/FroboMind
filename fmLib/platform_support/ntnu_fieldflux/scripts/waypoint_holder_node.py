@@ -39,7 +39,7 @@ class WPWriter():
 		self.meas_init_pub = rospy.Publisher(self.initiate_measurement_topic, Bool);
 
 #		rospy.loginfo("All subscribers initialized")
-		with open('testParking.csv','rb') as f:
+		with open('demoApelsvoll.csv','rb') as f:
 #			rospy.loginfo("csv file opened")
 			reader = csv.reader(f);
 			i=1;
